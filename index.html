@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <title>Aplikasi Fullpage</title>
+  
+  <script>
+    (function() {
+      // GANTI URL DI BAWAH INI dengan URL raw favicon GitHub Anda
+      var faviconUrl = "https://raw.githubusercontent.com/username/repository/main/favicon.ico";
+      
+      var link = document.createElement('link');
+      link.type = 'image/x-icon';
+      link.rel = 'shortcut icon';
+      link.href = faviconUrl;
+      document.getElementsByTagName('head')[0].appendChild(link);
+    })();
+  </script>
+
+  <style>
+    /* Style agar halaman benar-benar Fullpage tanpa margin bawaan */
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      font-family: Arial, sans-serif;
+      overflow: hidden; /* Menghilangkan scrollbar utama jika tidak diperlukan */
+    }
+    
+    .fullpage-container {
+      width: 100%;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+      color: white;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="fullpage-container">
+    <div>
+      <h1>Web App GAS Sukses Terbuka!</h1>
+      <p>Halaman ini berjalan Fullpage dengan Favicon dari GitHub.</p>
+    </div>
+  </div>
+
+</body>
+</html>
