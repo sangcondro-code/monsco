@@ -1,53 +1,46 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
-  <base target="_top">
-  <title>Aplikasi Fullpage</title>
-  
-  <script>
-    (function() {
-      // GANTI URL DI BAWAH INI dengan URL raw favicon GitHub Anda
-      var faviconUrl = "https://raw.githubusercontent.com/username/repository/main/favicon.ico";
-      
-      var link = document.createElement('link');
-      link.type = 'image/x-icon';
-      link.rel = 'shortcut icon';
-      link.href = faviconUrl;
-      document.getElementsByTagName('head')[0].appendChild(link);
-    })();
-  </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Google Apps Script</title>
 
-  <style>
-    /* Style agar halaman benar-benar Fullpage tanpa margin bawaan */
-    html, body {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      font-family: Arial, sans-serif;
-      overflow: hidden; /* Menghilangkan scrollbar utama jika tidak diperlukan */
-    }
-    
-    .fullpage-container {
-      width: 100%;
-      height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-      color: white;
-      text-align: center;
-    }
-  </style>
+    <script>
+        (function() {
+            // SILAKAN GANTI URL DI BAWAH INI dengan link RAW favicon dari GitHub Anda
+            var faviconUrl = "https://i.ibb.co.com/DgwKBwsr/Favicon.png";
+            
+            var link = document.createElement('link');
+            link.type = 'image/x-icon';
+            link.rel = 'shortcut icon';
+            link.href = faviconUrl;
+            document.getElementsByTagName('head')[0].appendChild(link);
+        })();
+    </script>
+
+    <style>
+        /* Mengatur agar halaman tidak memiliki margin/padding dan menghilangkan scrollbar utama */
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+            background-color: #ffffff;
+        }
+        
+        /* Mengatur iframe agar memenuhi seluruh layar (Fullpage) */
+        iframe {
+            border: none;
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+    </style>
 </head>
 <body>
 
-  <div class="fullpage-container">
-    <div>
-      <h1>Web App GAS Sukses Terbuka!</h1>
-      <p>Halaman ini berjalan Fullpage dengan Favicon dari GitHub.</p>
-    </div>
-  </div>
+    <iframe src="https://script.google.com/macros/s/AKfycbyWtIlv4z1POEJz86nRRTvXsbLGmvZ29SOLQx_qTD1CaR5wox8HyBVryIYIwa47Xzh1/exec"></iframe>
 
 </body>
 </html>
