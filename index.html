@@ -5,45 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
     <title>Monsco Money Management</title>
 
-    <!-- ============================================================ -->
-    <!-- FAVICON & HOME SCREEN ICONS                                    -->
-    <!-- ------------------------------------------------------------ -->
-    <!-- PENTING: tag-tag ini sengaja ditulis statis langsung di sini  -->
-    <!-- (bukan disuntik lewat JavaScript), karena Safari iOS men-scan -->
-    <!-- <head> untuk ikon "Add to Home Screen" SEBELUM script sempat  -->
-    <!-- jalan. Kalau ikon disuntik via JS, Safari sering keduluan     -->
-    <!-- scan dan endingnya gagal ambil ikon / pakai screenshot.       -->
-    <!--                                                                -->
-    <!-- URL ikon menggunakan jsDelivr CDN yang membaca langsung dari  -->
-    <!-- GitHub repo sangcondro-code (branch main, folder root).       -->
-    <!-- Format: https://cdn.jsdelivr.net/gh/USER/REPO@BRANCH/FILE    -->
-    <!-- ============================================================ -->
-
     <!-- Favicon biasa (tab browser) -->
-    <link rel="icon" type="image/png" sizes="32x32" href="https://cdn.jsdelivr.net/gh/sangcondro-code/sangcondro-code@main/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="https://cdn.jsdelivr.net/gh/sangcondro-code/sangcondro-code@main/favicon-16x16.png">
-    <link rel="shortcut icon" href="https://cdn.jsdelivr.net/gh/sangcondro-code/sangcondro-code@main/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/favicon-16x16.png">
+    <link rel="shortcut icon" href="https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/favicon-32x32.png">
 
-    <!-- Apple Touch Icon — WAJIB background solid, TANPA transparansi.   -->
-    <!-- Kalau ada area transparan, Safari akan render jadi kotak hitam   -->
-    <!-- pekat di sudut-sudutnya. File ini sudah di-flatten ke warna      -->
-    <!-- brand (#005CAA) dan di-resize ke 180x180 (ukuran standar iOS).   -->
-    <link rel="apple-touch-icon" sizes="180x180" href="https://cdn.jsdelivr.net/gh/sangcondro-code/sangcondro-code@main/apple-touch-icon.png">
+    <!-- Apple Touch Icon untuk iOS -->
+    <link rel="apple-touch-icon" sizes="180x180" href="https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/apple-touch-icon.png">
 
-    <!-- Ikon tambahan untuk PWA / Android "Add to Home Screen" -->
-    <link rel="icon" type="image/png" sizes="192x192" href="https://cdn.jsdelivr.net/gh/sangcondro-code/sangcondro-code@main/icon-192.png">
-    <link rel="icon" type="image/png" sizes="512x512" href="https://cdn.jsdelivr.net/gh/sangcondro-code/sangcondro-code@main/icon-512.png">
+    <!-- Ikon PWA / Android -->
+    <link rel="icon" type="image/png" sizes="192x192" href="https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/icon-512.png">
 
-    <!-- Judul yang tampil di bawah ikon saat di-Add to Home Screen di iOS -->
+    <!-- Meta iOS home screen -->
     <meta name="apple-mobile-web-app-title" content="Monsco">
-    <!-- Membuka tanpa address bar Safari saat dijalankan dari home screen -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <!-- Warna tema browser address bar (Android Chrome) -->
     <meta name="theme-color" content="#005CAA">
 
     <style>
-        /* Mengatur agar halaman tidak memiliki margin/padding dan menghilangkan scrollbar utama */
         body, html {
             margin: 0;
             padding: 0;
@@ -52,8 +32,6 @@
             overflow: hidden;
             background-color: #ffffff;
         }
-
-        /* Mengatur iframe agar memenuhi seluruh layar (Fullpage) */
         iframe {
             border: none;
             width: 100%;
@@ -63,13 +41,6 @@
     </style>
 </head>
 <body>
-    <!-- ============================================================ -->
-    <!-- ATRIBUT "allow" DI BAWAH INI WAJIB ADA untuk Fingerprint/Face  -->
-    <!-- ID (WebAuthn) bisa berfungsi. Tanpa ini, browser akan menolak  -->
-    <!-- navigator.credentials.create()/.get() di dalam iframe karena   -->
-    <!-- dianggap permission yang sensitif dan defaultnya diblokir      -->
-    <!-- untuk iframe cross-origin (vercel.app -> script.google.com).   -->
-    <!-- ============================================================ -->
     <iframe
         src="https://script.google.com/macros/s/AKfycbyWtIlv4z1POEJz86nRRTvXsbLGmvZ29SOLQx_qTD1CaR5wox8HyBVryIYIwa47Xzh1/exec"
         allow="publickey-credentials-create *; publickey-credentials-get *"
