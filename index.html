@@ -2,21 +2,47 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monsco Money Management</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+    <title>Monsco</title>
 
-    <script>
-        (function() {
-            // SILAKAN GANTI URL DI BAWAH INI dengan link RAW favicon dari GitHub Anda
-            var faviconUrl = "https://i.ibb.co.com/DgwKBwsr/Favicon.png";
-            
-            var link = document.createElement('link');
-            link.type = 'image/x-icon';
-            link.rel = 'shortcut icon';
-            link.href = faviconUrl;
-            document.getElementsByTagName('head')[0].appendChild(link);
-        })();
-    </script>
+    <!-- ============================================================ -->
+    <!-- FAVICON & HOME SCREEN ICONS                                    -->
+    <!-- ------------------------------------------------------------ -->
+    <!-- PENTING: tag-tag ini sengaja ditulis statis langsung di sini  -->
+    <!-- (bukan disuntik lewat JavaScript), karena Safari iOS men-scan -->
+    <!-- <head> untuk ikon "Add to Home Screen" SEBELUM script sempat  -->
+    <!-- jalan. Kalau ikon disuntik via JS, Safari sering keduluan     -->
+    <!-- scan dan endingnya gagal ambil ikon / pakai screenshot.       -->
+    <!--                                                                -->
+    <!-- Ganti URL di bawah dengan RAW URL dari repo GitHub Anda,       -->
+    <!-- misal:                                                         -->
+    <!-- https://raw.githubusercontent.com/USERNAME/REPO/main/icons/... -->
+    <!-- atau pakai jsDelivr (lebih cepat & ada CDN cache):              -->
+    <!-- https://cdn.jsdelivr.net/gh/USERNAME/REPO@main/icons/...        -->
+    <!-- ============================================================ -->
+
+    <!-- Favicon biasa (tab browser) — boleh tetap transparan, aman di sini -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16x16.png">
+    <link rel="shortcut icon" href="/icons/favicon-32x32.png">
+
+    <!-- Apple Touch Icon — WAJIB background solid, TANPA transparansi.   -->
+    <!-- Kalau ada area transparan, Safari akan render jadi kotak hitam   -->
+    <!-- pekat di sudut-sudutnya. File ini sudah di-flatten ke warna      -->
+    <!-- brand (#005CAA) dan di-resize ke 180x180 (ukuran standar iOS).   -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
+
+    <!-- Ikon tambahan untuk PWA / Android "Add to Home Screen" -->
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png">
+
+    <!-- Judul yang tampil di bawah ikon saat di-Add to Home Screen di iOS -->
+    <meta name="apple-mobile-web-app-title" content="Monsco">
+    <!-- Membuka tanpa address bar Safari saat dijalankan dari home screen -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <!-- Warna tema browser address bar (Android Chrome) -->
+    <meta name="theme-color" content="#005CAA">
 
     <style>
         /* Mengatur agar halaman tidak memiliki margin/padding dan menghilangkan scrollbar utama */
@@ -28,7 +54,7 @@
             overflow: hidden;
             background-color: #ffffff;
         }
-        
+
         /* Mengatur iframe agar memenuhi seluruh layar (Fullpage) */
         iframe {
             border: none;
@@ -39,8 +65,16 @@
     </style>
 </head>
 <body>
-
-    <iframe src="https://script.google.com/macros/s/AKfycbyWtIlv4z1POEJz86nRRTvXsbLGmvZ29SOLQx_qTD1CaR5wox8HyBVryIYIwa47Xzh1/exec"></iframe>
-
+    <!-- ============================================================ -->
+    <!-- ATRIBUT "allow" DI BAWAH INI WAJIB ADA untuk Fingerprint/Face  -->
+    <!-- ID (WebAuthn) bisa berfungsi. Tanpa ini, browser akan menolak  -->
+    <!-- navigator.credentials.create()/.get() di dalam iframe karena   -->
+    <!-- dianggap permission yang sensitif dan defaultnya diblokir      -->
+    <!-- untuk iframe cross-origin (vercel.app -> script.google.com).   -->
+    <!-- ============================================================ -->
+    <iframe
+        src="https://script.google.com/macros/s/AKfycbyWtIlv4z1POEJz86nRRTvXsbLGmvZ29SOLQx_qTD1CaR5wox8HyBVryIYIwa47Xzh1/exec"
+        allow="publickey-credentials-create *; publickey-credentials-get *"
+    ></iframe>
 </body>
 </html>
