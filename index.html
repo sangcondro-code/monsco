@@ -3,7 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
-    <title>Monsco Money Management</title>
+    <title>Monsco</title>
+
+    <!-- KUNCI: paksa skema warna tetap terang, jangan ikut Dark Mode HP -->
+    <meta name="color-scheme" content="light only">
+    <meta name="supported-color-schemes" content="light">
 
     <!-- Favicon biasa (tab browser) -->
     <link rel="icon" type="image/png" sizes="32x32" href="https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/favicon-32x32.png">
@@ -24,23 +28,43 @@
     <meta name="theme-color" content="#005CAA">
 
     <style>
-        body, html {
+        :root {
+            color-scheme: light;
+        }
+        html, body {
             margin: 0;
             padding: 0;
             height: 100%;
             width: 100%;
             overflow: hidden;
-            background-color: #ffffff;
+            background-color: #005CAA !important; /* warna fallback area notch/status bar */
         }
+        /* Jaga-jaga: paksa tetap terang walau HP di Dark Mode */
+        @media (prefers-color-scheme: dark) {
+            :root { color-scheme: light !important; }
+            html, body { background-color: #005CAA !important; }
+        }
+
+        /* Strip biru di belakang status bar translucent (notch/dynamic island) */
+        .safe-top {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: env(safe-area-inset-top);
+            background-color: #005CAA;
+            z-index: 10;
+        }
+
         iframe {
             border: none;
             width: 100%;
             height: 100%;
             display: block;
+            background-color: #ffffff;
         }
     </style>
 </head>
 <body>
+    <div class="safe-top"></div>
     <iframe
         src="https://script.google.com/macros/s/AKfycbyWtIlv4z1POEJz86nRRTvXsbLGmvZ29SOLQx_qTD1CaR5wox8HyBVryIYIwa47Xzh1/exec"
         allow="publickey-credentials-create *; publickey-credentials-get *"
