@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+    <title>Monsco</title>
+
+    <!-- PERFORMA: buka koneksi ke domain Apps Script LEBIH AWAL (sebelum iframe
+         mulai diminta browser) supaya DNS lookup + TLS handshake sudah selesai
+         duluan. Tidak mempercepat eksekusi server, tapi memangkas waktu
+         "negosiasi koneksi" yang biasanya kerasa di load pertama. -->
+    <link rel="preconnect" href="https://script.google.com" crossorigin>
+    <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
+    <link rel="dns-prefetch" href="https://script.google.com">
+    <link rel="dns-prefetch" href="https://script.googleusercontent.com">
+
+    <!-- Web App Manifest — WAJIB ada agar Android/Chrome "Add to Home Screen"
+         memakai ikon asli (icon-192/512) dengan masking yang rapi, bukan
+         screenshot/kotak generik. -->
+    <link rel="manifest" href="https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/manifest.json">
+
+    <!-- Favicon biasa (tab browser) -->
+    <link rel="icon" type="image/png" sizes="32x32" href="https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/favicon-16x16.png">
+    <link rel="shortcut icon" href="https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/favicon-32x32.png">
+
+    <!-- Apple Touch Icon untuk iOS — PENTING: file ini harus PNG solid/opaque
+         (tanpa transparansi). iOS menggambar putih/blank kalau ada area
+         transparan, dan iOS SUDAH membulatkan sudut sendiri otomatis, jadi
+         ikon sumber tidak perlu (dan sebaiknya tidak) punya sudut melengkung
+         bawaan. -->
+    <link rel="apple-touch-icon" sizes="180x180" href="https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/apple-touch-icon.png">
+
+    <!-- Ikon PWA / Android (dirujuk juga di manifest.json) -->
+    <link rel="icon" type="image/png" sizes="192x192" href="https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/icon-512.png">
+
+    <!-- Meta iOS home screen -->
+    <meta name="apple-mobile-web-app-title" content="Monsco">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <!-- Versi non-vendor-prefixed (dipakai Chrome/Android terbaru) -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#005CAA">
+
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+            background-color: #ffffff;
+        }
+        iframe {
+            border: none;
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* ---- Splash logo saat loading ----
+           Tanpa ini, layar akan PUTIH POLOS selama Apps Script (di dalam
+           iframe) sedang dimuat — itu yang terlihat seperti "putih semua"
+           saat app baru dibuka dari home screen. Splash ini tampil INSTAN
+           (bagian dari HTML utama, bukan nunggu iframe) lalu hilang halus
+           begitu iframe selesai memuat. */
+        #splash {
+            position: fixed;
+            inset: 0;
+            background: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity .25s ease;
+        }
+        #splash img {
+            width: 96px;
+            height: 96px;
+            border-radius: 22px;
+            box-shadow: 0 6px 24px rgba(0, 92, 170, 0.28);
+            animation: msc-pulse 1.3s ease-in-out infinite;
+        }
+        #splash.hide {
+            opacity: 0;
+            pointer-events: none;
+        }
+        @keyframes msc-pulse {
+            0%, 100% { transform: scale(1);    opacity: 1;   }
+            50%      { transform: scale(1.06); opacity: .85; }
+        }
+    </style>
+</head>
+<body>
+    <div id="splash">
+        <img src="https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/icon-192.png" alt="Monsco">
+    </div>
+
+    <iframe
+        id="app-frame"
+        src="https://script.google.com/macros/s/AKfycbyWtIlv4z1POEJz86nRRTvXsbLGmvZ29SOLQx_qTD1CaR5wox8HyBVryIYIwa47Xzh1/exec"
+        allow="publickey-credentials-create *; publickey-credentials-get *"
+    ></iframe>
+
+    <script>
+        var splash = document.getElementById('splash');
+        var frame = document.getElementById('app-frame');
+
+        function hideSplash() {
+            if (!splash) return;
+            splash.classList.add('hide');
+            setTimeout(function () { splash.style.display = 'none'; }, 300);
+        }
+
+        frame.addEventListener('load', hideSplash);
+        // Fallback: kalau event 'load' tidak terpicu untuk alasan apa pun,
+        // splash tetap hilang setelah 6 detik supaya tidak nyangkut selamanya.
+        setTimeout(hideSplash, 6000);
+    </script>
+</body>
+</html>
