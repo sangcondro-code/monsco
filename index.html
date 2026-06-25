@@ -14,6 +14,17 @@
     <link rel="dns-prefetch" href="https://script.google.com">
     <link rel="dns-prefetch" href="https://script.googleusercontent.com">
 
+    <!-- TAMBAHAN: preconnect ke jsdelivr karena manifest, favicon, ikon, dan
+         splash image SEMUA diambil dari domain ini. Tanpa ini, browser baru
+         mulai DNS/TLS untuk jsdelivr begitu ketemu tag <link>/<img> -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+
+    <!-- TAMBAHAN: preload splash icon supaya browser mulai fetch gambar ini
+         secepat mungkin saat parsing <head>, bukan menunggu CSS selesai
+         diparse dulu baru "menemukan" <img> di <body> -->
+    <link rel="preload" as="image" href="https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/icon-192.png">
+
     <!-- Web App Manifest — WAJIB ada agar Android/Chrome "Add to Home Screen"
          memakai ikon asli (icon-192/512) dengan masking yang rapi, bukan
          screenshot/kotak generik. -->
@@ -117,6 +128,20 @@
         // Fallback: kalau event 'load' tidak terpicu untuk alasan apa pun,
         // splash tetap hilang setelah 6 detik supaya tidak nyangkut selamanya.
         setTimeout(hideSplash, 6000);
+
+        // TAMBAHAN: daftarkan service worker untuk cache shell (index.html,
+        // manifest, ikon-ikon). Tujuannya BUKAN mempercepat load Apps Script
+        // (itu cross-origin, tidak bisa di-cache lewat SW ini), melainkan
+        // supaya shell-nya sendiri tampil INSTAN di kunjungan kedua dst —
+        // ini juga salah satu syarat agar Android/Chrome menawarkan
+        // "Install app" yang sesungguhnya, bukan sekadar shortcut.
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function () {
+                navigator.serviceWorker.register('./sw.js').catch(function (err) {
+                    console.warn('SW register gagal:', err);
+                });
+            });
+        }
     </script>
 </body>
 </html>
