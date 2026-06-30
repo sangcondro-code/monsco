@@ -59,7 +59,7 @@
             margin: 0;
             padding: 0;
             height: 100vh;  /* fallback untuk browser lama, ditulis duluan */
-            height: 100dvh; /* browser modern (termasuk Safari iOS) pakai ini, dan ikut update otomatis saat address bar Safari muncul/collapse */
+            height: 100svh; /* PERBAIKAN: pakai svh (statis), bukan dvh (dihitung ulang tiap frame saat address bar Safari beranimasi -> bikin patah-patah/jank saat scroll). svh tetap jauh lebih akurat dari height:100% lama, dan tetap smooth karena tidak recalc terus-menerus. */
             width: 100%;
             overflow: hidden;
             background-color: #ffffff;
