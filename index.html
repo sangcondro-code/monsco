@@ -58,7 +58,8 @@
         body, html {
             margin: 0;
             padding: 0;
-            height: 100%;
+            height: 100vh;  /* fallback untuk browser lama, ditulis duluan */
+            height: 100dvh; /* browser modern (termasuk Safari iOS) pakai ini, dan ikut update otomatis saat address bar Safari muncul/collapse */
             width: 100%;
             overflow: hidden;
             background-color: #ffffff;
