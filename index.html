@@ -82,6 +82,11 @@
             width: 100%;
             height: 100%;
             display: block;
+            /* Sama seperti fix di Index.html Apps Script: paksa masuk
+               compositing layer sendiri untuk menghindari bug painting
+               WebKit yang memotong render di tepi bawah standalone PWA. */
+            -webkit-transform: translateZ(0);
+            transform: translateZ(0);
         }
 
         /* ---- Splash logo saat loading ----
