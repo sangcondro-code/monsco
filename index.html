@@ -5,6 +5,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
     <title>Monsco</title>
 
+    <!-- PERBAIKAN GAP PUTIH DI BAWAH (iOS standalone): diletakkan paling awal
+         di <head>, dijalankan SEBELUM apa pun lain dirender, supaya
+         --app-height sudah punya nilai yang benar sebelum body sempat kelihatan.
+         window.innerHeight dibaca di sini adalah ukuran layar SEBENARNYA yang
+         dilaporkan browser saat itu juga — tidak berdasar asumsi seperti unit
+         CSS svh/dvh yang ternyata masih suka meleset di kombinasi iOS
+         standalone (Add to Home Screen) + iframe cross-origin. Listener resize/
+         orientationchange/visualViewport memastikan nilainya tetap akurat kalau
+         nanti orientasi berubah atau (di mode non-standalone) toolbar Safari
+         muncul/hilang. -->
+    <script>
+        (function () {
+            function setAppHeight() {
+                document.documentElement.style.setProperty('--app-height', window.innerHeight + 'px');
+            }
+            setAppHeight();
+            window.addEventListener('resize', setAppHeight);
+            window.addEventListener('orientationchange', setAppHeight);
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', setAppHeight);
+            }
+            document.addEventListener('DOMContentLoaded', setAppHeight);
+            window.addEventListener('load', setAppHeight);
+        })();
+    </script>
+
     <!-- PERFORMA: buka koneksi ke domain Apps Script LEBIH AWAL (sebelum iframe
          mulai diminta browser) supaya DNS lookup + TLS handshake sudah selesai
          duluan. Tidak mempercepat eksekusi server, tapi memangkas waktu
@@ -58,21 +84,15 @@
         body, html {
             margin: 0;
             padding: 0;
-            height: 100vh;  /* fallback paling dasar untuk browser sangat lama */
-            height: 100dvh; /* PERBAIKAN: sebelumnya 100svh. svh dihitung dengan asumsi
-                                toolbar Safari SEDANG tampil, jadi nilainya sengaja lebih
-                                pendek dari layar penuh. Begitu app dibuka standalone dari
-                                homescreen (manifest display:"standalone"), toolbar itu
-                                TIDAK PERNAH muncul — tapi svh tetap saja menghitung ruang
-                                seolah-olah nanti ada toolbar, sehingga iframe berhenti
-                                sebelum benar-benar sampai tepi bawah layar dan nyisain
-                                strip putih dari background body/html ini. dvh (dynamic
-                                viewport height) menghitung ruang yang BENAR-BENAR
-                                tersedia. Concern "jank saat toolbar animasi" yang jadi
-                                alasan svh sebelumnya cuma relevan kalau dibuka lewat tab
-                                Safari biasa (bukan standalone) — di mode standalone
-                                toolbar tidak pernah berubah-ubah sama sekali, jadi dvh
-                                di sini aman 100% tanpa efek samping jank. */
+            height: 100vh;   /* fallback paling dasar untuk browser sangat lama */
+            height: 100dvh;  /* fallback kedua untuk browser yang dukung dvh */
+            /* PERBAIKAN UTAMA: --app-height di-set lewat JS (lihat <script> paling
+               atas di <head>) berdasarkan window.innerHeight yang SESUNGGUHNYA,
+               bukan hasil hitungan asumsi CSS unit (svh/dvh) yang ternyata masih
+               suka meleset di kombinasi iOS standalone + iframe cross-origin.
+               Fallback ke 100dvh kalau JS belum sempat jalan (harusnya cuma
+               sepersekian detik di awal, sebelum sempat kelihatan). */
+            height: var(--app-height, 100dvh);
             width: 100%;
             overflow: hidden;
             background-color: #ffffff;
