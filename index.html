@@ -58,8 +58,21 @@
         body, html {
             margin: 0;
             padding: 0;
-            height: 100vh;  /* fallback untuk browser lama, ditulis duluan */
-            height: 100svh; /* PERBAIKAN: pakai svh (statis), bukan dvh (dihitung ulang tiap frame saat address bar Safari beranimasi -> bikin patah-patah/jank saat scroll). svh tetap jauh lebih akurat dari height:100% lama, dan tetap smooth karena tidak recalc terus-menerus. */
+            height: 100vh;  /* fallback paling dasar untuk browser sangat lama */
+            height: 100dvh; /* PERBAIKAN: sebelumnya 100svh. svh dihitung dengan asumsi
+                                toolbar Safari SEDANG tampil, jadi nilainya sengaja lebih
+                                pendek dari layar penuh. Begitu app dibuka standalone dari
+                                homescreen (manifest display:"standalone"), toolbar itu
+                                TIDAK PERNAH muncul — tapi svh tetap saja menghitung ruang
+                                seolah-olah nanti ada toolbar, sehingga iframe berhenti
+                                sebelum benar-benar sampai tepi bawah layar dan nyisain
+                                strip putih dari background body/html ini. dvh (dynamic
+                                viewport height) menghitung ruang yang BENAR-BENAR
+                                tersedia. Concern "jank saat toolbar animasi" yang jadi
+                                alasan svh sebelumnya cuma relevan kalau dibuka lewat tab
+                                Safari biasa (bukan standalone) — di mode standalone
+                                toolbar tidak pernah berubah-ubah sama sekali, jadi dvh
+                                di sini aman 100% tanpa efek samping jank. */
             width: 100%;
             overflow: hidden;
             background-color: #ffffff;
