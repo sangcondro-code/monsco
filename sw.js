@@ -3,14 +3,16 @@
 // untuk bagian shell-nya. Konten di dalam iframe (Apps Script) TIDAK
 // di-cache di sini karena itu cross-origin dan harus selalu fresh.
 
-// v3: cache_name dinaikkan supaya browser menganggap ini SW baru (memicu
-// install/activate ulang, otomatis membersihkan cache v2 yang lama/basi —
+// v4: cache_name dinaikkan supaya browser menganggap ini SW baru (memicu
+// install/activate ulang, otomatis membersihkan cache v3 yang lama/basi —
 // lihat listener 'activate' di bawah). Dinaikkan sekarang karena index.html
-// diperbaiki (100svh -> 100dvh, fix gap putih di bawah pada mode standalone
-// iOS). NAIKKAN ANGKA INI LAGI tiap kali nanti mengubah index.html/sw.js
-// secara berarti, supaya client lama dipaksa ambil versi baru alih-alih
-// nyangkut di cache.
-const CACHE_NAME = 'monsco-shell-v3';
+// diperbaiki lagi: unit CSS dvh/svh ternyata masih belum cukup reliable di
+// kombinasi iOS standalone + iframe cross-origin, jadi diganti pakai
+// window.innerHeight yang diukur lewat JS (--app-height custom property).
+// NAIKKAN ANGKA INI LAGI tiap kali nanti mengubah index.html/sw.js secara
+// berarti, supaya client lama dipaksa ambil versi baru alih-alih nyangkut
+// di cache.
+const CACHE_NAME = 'monsco-shell-v4';
 const CDN_BASE = 'https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/';
 
 // CATATAN PERBAIKAN: './' dan './index.html' SENGAJA TIDAK lagi di-precache
