@@ -5,13 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Monsco</title>
 
-    <!-- ===== Bahan PWA #1: Manifest — supaya "Add to Home Screen" bikin ikon
-         app beneran (bukan cuma shortcut Safari) dan bisa dibuka fullscreen
-         tanpa address bar (display:"standalone" di manifest.json). ===== -->
+    <!-- Manifest — supaya "Add to Home Screen" bikin ikon app beneran
+         (bukan shortcut generic) dan bisa dibuka fullscreen tanpa address
+         bar Safari (display:"standalone" di manifest.json). -->
     <link rel="manifest" href="https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/manifest.json">
 
-    <!-- ===== Bahan PWA #2: Ikon-ikon — biar homescreen icon rapi, bukan
-         generic/pecah, di iOS maupun Android. ===== -->
+    <!-- Ikon-ikon — biar homescreen icon rapi, bukan generic/pecah -->
     <link rel="icon" type="image/png" sizes="32x32" href="https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/favicon-16x16.png">
     <link rel="apple-touch-icon" sizes="180x180" href="https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/apple-touch-icon.png">
@@ -56,19 +55,6 @@
         webkitallowfullscreen="true"
         mozallowfullscreen="true">
     </iframe>
-
-    <!-- ===== Bahan PWA #3: Service Worker — cache shell (bukan konten
-         Apps Script-nya, itu tetap selalu fresh dari network) supaya app
-         ini kelihatan instan di kunjungan kedua dst. ===== -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function () {
-                navigator.serviceWorker.register('./sw.js').catch(function (err) {
-                    console.warn('SW register gagal:', err);
-                });
-            });
-        }
-    </script>
 
 </body>
 </html>
