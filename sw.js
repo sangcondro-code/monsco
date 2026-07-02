@@ -12,7 +12,7 @@
 // NAIKKAN ANGKA INI LAGI tiap kali nanti mengubah index.html/sw.js secara
 // berarti, supaya client lama dipaksa ambil versi baru alih-alih nyangkut
 // di cache.
-const CACHE_NAME = 'monsco-shell-v6';
+const CACHE_NAME = 'monsco-shell-v7';
 const CDN_BASE = 'https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/';
 
 // CATATAN PERBAIKAN: './' dan './index.html' SENGAJA TIDAK lagi di-precache
