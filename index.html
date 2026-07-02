@@ -2,45 +2,49 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Monsco</title>
 
-    <link rel="preconnect" href="https://script.google.com">
-
+    <!-- Ikon — ini yang bikin homescreen icon rapi (bukan huruf "M" default),
+         dan favicon di tab browser. TIDAK butuh manifest.json sama sekali,
+         ini fitur bawaan Apple/browser sendiri yang independen dari PWA. -->
     <link rel="icon" type="image/png" sizes="32x32" href="https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/favicon-16x16.png">
     <link rel="apple-touch-icon" sizes="180x180" href="https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/apple-touch-icon.png">
 
+    <!-- Bikin fullscreen (tanpa address bar Safari) pas dibuka dari
+         homescreen — juga tidak butuh manifest.json. -->
     <meta name="apple-mobile-web-app-title" content="Monsco">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#ffffff">
-
+    <meta name="theme-color" content="#005CAA">
     <style>
-        html, body {
+        /* Menghapus margin dan padding bawaan browser agar benar-benar penuh */
+        body, html {
             margin: 0;
             padding: 0;
-            background-color: #ffffff;
-        }
-        body {
-            position: fixed;
-            inset: 0;
-            overflow: hidden;
-        }
-        .gas-iframe {
-            position: fixed;
-            inset: 0;
             width: 100%;
             height: 100%;
-            border: none;
+            overflow: hidden; /* Mencegah munculnya scrollbar ganda di luar iframe */
+            background-color: #ffffff; /* Latar belakang putih saat iframe loading */
+        }
+
+        /* Mengatur iframe agar memenuhi seluruh layar */
+        .gas-iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none; /* Menghilangkan garis bingkai iframe */
         }
     </style>
 </head>
 <body>
 
-    <iframe
-        src="https://script.google.com/macros/s/AKfycbw_5SZH1TsqEJ8LVVTsAe1LnO3xnKCpi7S-XLe__zI-aTI120HzqsvypNCoAzqlUWR2/exec"
-        class="gas-iframe"
+    <iframe 
+        src="https://script.google.com/macros/s/AKfycbw_5SZH1TsqEJ8LVVTsAe1LnO3xnKCpi7S-XLe__zI-aTI120HzqsvypNCoAzqlUWR2/exec" 
+        class="gas-iframe" 
         allowfullscreen="true"
         webkitallowfullscreen="true"
         mozallowfullscreen="true">
