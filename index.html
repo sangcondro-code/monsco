@@ -2,159 +2,65 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Monsco</title>
 
-    <!-- PERFORMA: buka koneksi ke domain Apps Script LEBIH AWAL (sebelum iframe
-         mulai diminta browser) supaya DNS lookup + TLS handshake sudah selesai
-         duluan. Tidak mempercepat eksekusi server, tapi memangkas waktu
-         "negosiasi koneksi" yang biasanya kerasa di load pertama. -->
-    <link rel="preconnect" href="https://script.google.com" crossorigin>
-    <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
-    <link rel="dns-prefetch" href="https://script.google.com">
-    <link rel="dns-prefetch" href="https://script.googleusercontent.com">
-
-    <!-- TAMBAHAN: preconnect ke jsdelivr karena manifest, favicon, ikon, dan
-         splash image SEMUA diambil dari domain ini. Tanpa ini, browser baru
-         mulai DNS/TLS untuk jsdelivr begitu ketemu tag <link>/<img> -->
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
-
-    <!-- TAMBAHAN: preload splash icon supaya browser mulai fetch gambar ini
-         secepat mungkin saat parsing <head>, bukan menunggu CSS selesai
-         diparse dulu baru "menemukan" <img> di <body> -->
-    <link rel="preload" as="image" href="https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/icon-192.png">
-
-    <!-- Web App Manifest — WAJIB ada agar Android/Chrome "Add to Home Screen"
-         memakai ikon asli (icon-192/512) dengan masking yang rapi, bukan
-         screenshot/kotak generik. -->
+    <!-- ===== Bahan PWA #1: Manifest — supaya "Add to Home Screen" bikin ikon
+         app beneran (bukan cuma shortcut Safari) dan bisa dibuka fullscreen
+         tanpa address bar (display:"standalone" di manifest.json). ===== -->
     <link rel="manifest" href="https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/manifest.json">
 
-    <!-- Favicon biasa (tab browser) -->
+    <!-- ===== Bahan PWA #2: Ikon-ikon — biar homescreen icon rapi, bukan
+         generic/pecah, di iOS maupun Android. ===== -->
     <link rel="icon" type="image/png" sizes="32x32" href="https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/favicon-16x16.png">
-    <link rel="shortcut icon" href="https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/favicon-32x32.png">
-
-    <!-- Apple Touch Icon untuk iOS — PENTING: file ini harus PNG solid/opaque
-         (tanpa transparansi). iOS menggambar putih/blank kalau ada area
-         transparan, dan iOS SUDAH membulatkan sudut sendiri otomatis, jadi
-         ikon sumber tidak perlu (dan sebaiknya tidak) punya sudut melengkung
-         bawaan. -->
     <link rel="apple-touch-icon" sizes="180x180" href="https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/apple-touch-icon.png">
-
-    <!-- Ikon PWA / Android (dirujuk juga di manifest.json) -->
     <link rel="icon" type="image/png" sizes="192x192" href="https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/icon-192.png">
     <link rel="icon" type="image/png" sizes="512x512" href="https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/icon-512.png">
 
-    <!-- Meta iOS home screen -->
+    <!-- Meta iOS/Android home screen: ini yang bikin standalone-nya jalan -->
     <meta name="apple-mobile-web-app-title" content="Monsco">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <!-- Versi non-vendor-prefixed (dipakai Chrome/Android terbaru) -->
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#005CAA">
 
     <style>
+        /* Menghapus margin dan padding bawaan browser agar benar-benar penuh */
         body, html {
             margin: 0;
             padding: 0;
-            height: 100vh;  /* fallback paling dasar untuk browser sangat lama */
-            height: 100dvh; /* PERBAIKAN: sebelumnya 100svh. svh dihitung dengan asumsi
-                                toolbar Safari SEDANG tampil, jadi nilainya sengaja lebih
-                                pendek dari layar penuh. Begitu app dibuka standalone dari
-                                homescreen (manifest display:"standalone"), toolbar itu
-                                TIDAK PERNAH muncul — tapi svh tetap saja menghitung ruang
-                                seolah-olah nanti ada toolbar, sehingga iframe berhenti
-                                sebelum benar-benar sampai tepi bawah layar dan nyisain
-                                strip putih dari background body/html ini. dvh (dynamic
-                                viewport height) menghitung ruang yang BENAR-BENAR
-                                tersedia. Concern "jank saat toolbar animasi" yang jadi
-                                alasan svh sebelumnya cuma relevan kalau dibuka lewat tab
-                                Safari biasa (bukan standalone) — di mode standalone
-                                toolbar tidak pernah berubah-ubah sama sekali, jadi dvh
-                                di sini aman 100% tanpa efek samping jank. */
-            width: 100%;
-            overflow: hidden;
-            background-color: #ffffff;
-        }
-        iframe {
-            border: none;
             width: 100%;
             height: 100%;
-            display: block;
-            /* Sama seperti fix di Index.html Apps Script: paksa masuk
-               compositing layer sendiri untuk menghindari bug painting
-               WebKit yang memotong render di tepi bawah standalone PWA. */
-            -webkit-transform: translateZ(0);
-            transform: translateZ(0);
+            overflow: hidden; /* Mencegah munculnya scrollbar ganda di luar iframe */
+            background-color: #ffffff; /* Latar belakang putih saat iframe loading */
         }
 
-        /* ---- Splash logo saat loading ----
-           Tanpa ini, layar akan PUTIH POLOS selama Apps Script (di dalam
-           iframe) sedang dimuat — itu yang terlihat seperti "putih semua"
-           saat app baru dibuka dari home screen. Splash ini tampil INSTAN
-           (bagian dari HTML utama, bukan nunggu iframe) lalu hilang halus
-           begitu iframe selesai memuat. */
-        #splash {
-            position: fixed;
-            inset: 0;
-            background: #ffffff;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-            transition: opacity .25s ease;
-        }
-        #splash img {
-            width: 96px;
-            height: 96px;
-            border-radius: 22px;
-            box-shadow: 0 6px 24px rgba(0, 92, 170, 0.28);
-            animation: msc-pulse 1.3s ease-in-out infinite;
-        }
-        #splash.hide {
-            opacity: 0;
-            pointer-events: none;
-        }
-        @keyframes msc-pulse {
-            0%, 100% { transform: scale(1);    opacity: 1;   }
-            50%      { transform: scale(1.06); opacity: .85; }
+        /* Mengatur iframe agar memenuhi seluruh layar */
+        .gas-iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none; /* Menghilangkan garis bingkai iframe */
         }
     </style>
 </head>
 <body>
-    <div id="splash">
-        <img src="https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/icon-192.png" alt="Monsco">
-    </div>
 
-    <iframe
-        id="app-frame"
-        src="https://script.google.com/macros/s/AKfycbw_5SZH1TsqEJ8LVVTsAe1LnO3xnKCpi7S-XLe__zI-aTI120HzqsvypNCoAzqlUWR2/exec"
-        allow="publickey-credentials-create *; publickey-credentials-get *"
-    ></iframe>
+    <iframe 
+        src="https://script.google.com/macros/s/AKfycbw_5SZH1TsqEJ8LVVTsAe1LnO3xnKCpi7S-XLe__zI-aTI120HzqsvypNCoAzqlUWR2/exec" 
+        class="gas-iframe" 
+        allowfullscreen="true"
+        webkitallowfullscreen="true"
+        mozallowfullscreen="true">
+    </iframe>
 
-
+    <!-- ===== Bahan PWA #3: Service Worker — cache shell (bukan konten
+         Apps Script-nya, itu tetap selalu fresh dari network) supaya app
+         ini kelihatan instan di kunjungan kedua dst. ===== -->
     <script>
-        var splash = document.getElementById('splash');
-        var frame = document.getElementById('app-frame');
-
-        function hideSplash() {
-            if (!splash) return;
-            splash.classList.add('hide');
-            setTimeout(function () { splash.style.display = 'none'; }, 300);
-        }
-
-        frame.addEventListener('load', hideSplash);
-        // Fallback: kalau event 'load' tidak terpicu untuk alasan apa pun,
-        // splash tetap hilang setelah 6 detik supaya tidak nyangkut selamanya.
-        setTimeout(hideSplash, 6000);
-
-        // TAMBAHAN: daftarkan service worker untuk cache shell (index.html,
-        // manifest, ikon-ikon). Tujuannya BUKAN mempercepat load Apps Script
-        // (itu cross-origin, tidak bisa di-cache lewat SW ini), melainkan
-        // supaya shell-nya sendiri tampil INSTAN di kunjungan kedua dst —
-        // ini juga salah satu syarat agar Android/Chrome menawarkan
-        // "Install app" yang sesungguhnya, bukan sekadar shortcut.
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function () {
                 navigator.serviceWorker.register('./sw.js').catch(function (err) {
@@ -163,5 +69,6 @@
             });
         }
     </script>
+
 </body>
 </html>
