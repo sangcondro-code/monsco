@@ -2,28 +2,22 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Monsco</title>
 
-    <!-- Manifest — supaya "Add to Home Screen" bikin ikon app beneran
-         (bukan shortcut generic) dan bisa dibuka fullscreen tanpa address
-         bar Safari (display:"standalone" di manifest.json). -->
-    <link rel="manifest" href="https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/manifest.json">
-
-    <!-- Ikon-ikon — biar homescreen icon rapi, bukan generic/pecah -->
+    <!-- Ikon — ini yang bikin homescreen icon rapi (bukan huruf "M" default),
+         dan favicon di tab browser. TIDAK butuh manifest.json sama sekali,
+         ini fitur bawaan Apple/browser sendiri yang independen dari PWA. -->
     <link rel="icon" type="image/png" sizes="32x32" href="https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/favicon-16x16.png">
     <link rel="apple-touch-icon" sizes="180x180" href="https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="192x192" href="https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/icon-192.png">
-    <link rel="icon" type="image/png" sizes="512x512" href="https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/icon-512.png">
 
-    <!-- Meta iOS/Android home screen: ini yang bikin standalone-nya jalan -->
+    <!-- Bikin fullscreen (tanpa address bar Safari) pas dibuka dari
+         homescreen — juga tidak butuh manifest.json. -->
     <meta name="apple-mobile-web-app-title" content="Monsco">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#005CAA">
-
     <style>
         /* Menghapus margin dan padding bawaan browser agar benar-benar penuh */
         body, html {
