@@ -5,6 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Monsco</title>
 
+    <!-- PERF: preconnect/dns-prefetch — HANYA network hint (mulai DNS+TLS
+         lebih awal), TIDAK menyentuh CSS/layout/ukuran elemen sama sekali,
+         jadi tidak mungkin menyebabkan bug geser/gap apa pun. script.google.com
+         adalah yang paling penting di sini karena itu tujuan <iframe> di bawah —
+         percepatan ini murni memangkas waktu sebelum iframe mulai memuat. -->
+    <link rel="preconnect" href="https://script.google.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="dns-prefetch" href="https://script.google.com">
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+
     <!-- Ikon — ini yang bikin homescreen icon rapi (bukan huruf "M" default),
          dan favicon di tab browser. TIDAK butuh manifest.json sama sekali,
          ini fitur bawaan Apple/browser sendiri yang independen dari PWA. -->
