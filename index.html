@@ -15492,30 +15492,62 @@ function mBiometricLogin() {
     try { sessionStorage.removeItem('monsco_session'); } catch (e) {}
   }
 
+  // PERBAIKAN #1 (layar putih kosong): sebelumnya, selama fetch session-restore
+  // berlangsung, #login-section DAN #app/#m-shell sama-sama tersembunyi, dan
+  // #loading (spinner bermerek yang sudah ada di HTML) TIDAK pernah dipanggil
+  // di sini — hasilnya body kosong putih polos sampai request selesai. Sekarang
+  // spinner ditampilkan dari awal, dan ditutup di SEMUA jalur keluar (sukses,
+  // gagal-auth, maupun gagal-jaringan) supaya tidak pernah nyangkut nyala terus.
   document.getElementById('login-section').classList.add('d-none');
-  google.script.run
-    .withSuccessHandler(function (res) {
-      if (!res.success) {
-        clearStoredSession();
+  showLoad('Memuat sesi...');
+
+  // PERBAIKAN #2 (kembali ke layar login padahal sesi masih sah): sebelumnya
+  // KEGAGALAN JARINGAN (mis. koneksi belum pulih saat HP baru dibangunkan dari
+  // background/sleep) diperlakukan SAMA seperti sesi tidak valid — langsung
+  // menghapus sesi tersimpan dan memaksa login manual ulang. Sekarang gagal
+  // jaringan dicoba ULANG otomatis sekali (jeda singkat) sebelum benar-benar
+  // dianggap gagal — sesi HANYA dihapus kalau SERVER sendiri yang bilang
+  // "sesi tidak valid" (res.success === false), bukan karena koneksi lambat.
+  function attemptSessionRestore(isRetry) {
+    google.script.run
+      .withSuccessHandler(function (res) {
+        hideLoad();
+        if (!res.success) {
+          // Server tegas bilang sesi ini sudah tidak valid — baru di sini aman dihapus.
+          clearStoredSession();
+          document.getElementById('login-section').classList.remove('d-none');
+          return;
+        }
+        STATE.username = res.username; STATE.sessionToken = res.sessionToken; STATE.displayName = res.displayName;
+        var appEl = document.getElementById('app');
+        appEl.style.display = ''; appEl.classList.remove('d-none');
+        var mShellElRestore = document.getElementById('m-shell');
+        if (mShellElRestore) mShellElRestore.classList.remove('d-none');
+        document.getElementById('user-display-name').textContent = res.displayName || res.username;
+        document.getElementById('dash-greet').textContent = res.displayName || res.username;
+        initApp();
+        startAutoRefresh();
+        startIdleTimer();
+      })
+      .withFailureHandler(function (err) {
+        if (!isRetry) {
+          // Kemungkinan besar cuma koneksi belum siap — coba sekali lagi
+          // setelah jeda singkat, JANGAN langsung hapus sesi / paksa login.
+          showLoad('Menyambungkan ulang...');
+          setTimeout(function () { attemptSessionRestore(true); }, 1500);
+          return;
+        }
+        // Sudah dicoba 2x dan tetap gagal (bukan cuma sekali gagal) — baru di
+        // sini fallback ke layar login, TAPI sesi tersimpan TIDAK dihapus,
+        // supaya begitu koneksi normal lagi, percobaan berikutnya bisa auto-restore
+        // lagi tanpa user harus ketik ulang username/password.
+        hideLoad();
+        console.error('Session restore failed after retry:', err);
         document.getElementById('login-section').classList.remove('d-none');
-        return;
-      }
-      STATE.username = res.username; STATE.sessionToken = res.sessionToken; STATE.displayName = res.displayName;
-      var appEl = document.getElementById('app');
-      appEl.style.display = ''; appEl.classList.remove('d-none');
-      var mShellElRestore = document.getElementById('m-shell');
-      if (mShellElRestore) mShellElRestore.classList.remove('d-none');
-      document.getElementById('user-display-name').textContent = res.displayName || res.username;
-      document.getElementById('dash-greet').textContent = res.displayName || res.username;
-      initApp();
-      startAutoRefresh();
-      startIdleTimer();
-    })
-    .withFailureHandler(function () {
-      clearStoredSession();
-      document.getElementById('login-section').classList.remove('d-none');
-    })
-    .loginUserBySession(sess.username, sess.token);
+      })
+      .loginUserBySession(sess.username, sess.token);
+  }
+  attemptSessionRestore(false);
 })();
 
 /* Tampilkan tombol biometric di layar login (jika ada) segera saat halaman
