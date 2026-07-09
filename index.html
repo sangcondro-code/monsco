@@ -256,6 +256,15 @@
     .trx-bulk-actions { display:flex; gap:8px; flex-wrap:wrap; }
 
     #loading { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:99999; display:none; align-items:center; justify-content:center; flex-direction:column; color:white; }
+    /* Varian KHUSUS layar loading awal (boot / restore sesi) — dipakai lewat
+       showBootLoad()/hideBootLoad(), BUKAN showLoad() biasa. Sengaja dipisah
+       dari #loading dasar di atas: overlay dim gelap transparan itu masih
+       dipakai di seluruh app untuk aksi dalam-app (Saving/Deleting/dst, supaya
+       konten di belakangnya tetap keliatan redup) — HANYA layar loading paling
+       awal (sebelum ada konten apa pun di belakang untuk didim) yang tampil
+       putih polos + warna brand, biar tidak kontras/nyala seperti gambar
+       loading generik. */
+    #loading.boot-loading { background:#ffffff; color:#005CAA; }
     #loading.show { display:flex; }
     .view { animation:fadeIn .3s ease; }
     @keyframes fadeIn { from{opacity:0;transform:translateY(8px);} to{opacity:1;transform:translateY(0);} }
@@ -4433,6 +4442,10 @@ function escapeHtml(s) {
 }
 function showLoad(msg) { document.getElementById('loading-msg').innerText = msg || 'Loading...'; document.getElementById('loading').classList.add('show'); }
 function hideLoad() { document.getElementById('loading').classList.remove('show'); }
+// Varian putih + biru brand — KHUSUS layar loading paling awal (boot/restore
+// sesi), bukan untuk overlay aksi dalam-app (lihat catatan CSS #loading.boot-loading).
+function showBootLoad(msg) { document.getElementById('loading').classList.add('boot-loading'); showLoad(msg); }
+function hideBootLoad() { document.getElementById('loading').classList.remove('boot-loading'); hideLoad(); }
 function rawNumber(el) { return Number(String(el.value).replace(/[^0-9]/g, '')) || 0; }
 function bindRupiahInputEvent(el) {
   var digits = el.value.replace(/[^0-9]/g, '');
@@ -15499,7 +15512,7 @@ function mBiometricLogin() {
   // spinner ditampilkan dari awal, dan ditutup di SEMUA jalur keluar (sukses,
   // gagal-auth, maupun gagal-jaringan) supaya tidak pernah nyangkut nyala terus.
   document.getElementById('login-section').classList.add('d-none');
-  showLoad('Memuat sesi...');
+  showBootLoad('Memuat sesi...');
 
   // PERBAIKAN #2 (kembali ke layar login padahal sesi masih sah): sebelumnya
   // KEGAGALAN JARINGAN (mis. koneksi belum pulih saat HP baru dibangunkan dari
@@ -15511,7 +15524,7 @@ function mBiometricLogin() {
   function attemptSessionRestore(isRetry) {
     google.script.run
       .withSuccessHandler(function (res) {
-        hideLoad();
+        hideBootLoad();
         if (!res.success) {
           // Server tegas bilang sesi ini sudah tidak valid — baru di sini aman dihapus.
           clearStoredSession();
@@ -15533,7 +15546,7 @@ function mBiometricLogin() {
         if (!isRetry) {
           // Kemungkinan besar cuma koneksi belum siap — coba sekali lagi
           // setelah jeda singkat, JANGAN langsung hapus sesi / paksa login.
-          showLoad('Menyambungkan ulang...');
+          showBootLoad('Menyambungkan ulang...');
           setTimeout(function () { attemptSessionRestore(true); }, 1500);
           return;
         }
@@ -15541,7 +15554,7 @@ function mBiometricLogin() {
         // sini fallback ke layar login, TAPI sesi tersimpan TIDAK dihapus,
         // supaya begitu koneksi normal lagi, percobaan berikutnya bisa auto-restore
         // lagi tanpa user harus ketik ulang username/password.
-        hideLoad();
+        hideBootLoad();
         console.error('Session restore failed after retry:', err);
         document.getElementById('login-section').classList.remove('d-none');
       })
