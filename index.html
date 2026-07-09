@@ -1554,7 +1554,34 @@
       .swal2-popup.swal2-toast .swal2-title{
         font-size:.82rem !important; font-weight:600 !important; padding:0 !important;
       }
+      /* ANTI-KEDIP: kalau ada sesi tersimpan (lihat <script> kecil di bawah,
+         tepat sebelum </head>), paksa sembunyikan #login-section dan
+         paksa tampilkan logo loading SEBELUM #login-section sempat
+         ke-render sama sekali — bukan menunggu skrip utama (ratusan KB)
+         selesai di-parse & jalan baru menyembunyikannya lewat JS biasa
+         (itulah sumber "kedipan login" sebelumnya: ada jeda terlihat
+         antara HTML pertama kali tergambar dan skrip besar selesai
+         jalan). class="has-session" di <html> dihapus lagi oleh JS
+         begitu hasil restore sesi sudah pasti (berhasil/gagal), supaya
+         override paksa ini tidak nyangkut selamanya. */
+      html.has-session #login-section{ display:none !important; }
+      html.has-session #loading{ display:flex !important; background:#fff !important; color:#005CAA !important; }
+      html.has-session #loading .spinner-border{ display:none !important; }
+      html.has-session #loading #loading-msg{ display:none !important; }
+      html.has-session #loading .boot-logo{ display:block !important; animation:mBootPulse 1.4s ease-in-out infinite; }
   </style>
+  <script>
+    (function () {
+      try {
+        var raw = localStorage.getItem('monsco_session_persist') || sessionStorage.getItem('monsco_session');
+        if (!raw) return;
+        var sess = JSON.parse(raw);
+        if (sess && sess.username && sess.token) {
+          document.documentElement.classList.add('has-session');
+        }
+      } catch (e) { /* localStorage nonaktif/rusak — biarkan login-section tampil normal */ }
+    })();
+  </script>
 </head>
 <body>
 
@@ -15628,6 +15655,7 @@ function mBiometricLogin() {
     google.script.run
       .withSuccessHandler(function (res) {
         hideBootLoad();
+        document.documentElement.classList.remove('has-session');
         if (!res.success) {
           // Server tegas bilang sesi ini sudah tidak valid — baru di sini aman dihapus.
           clearStoredSession();
@@ -15658,6 +15686,7 @@ function mBiometricLogin() {
         // supaya begitu koneksi normal lagi, percobaan berikutnya bisa auto-restore
         // lagi tanpa user harus ketik ulang username/password.
         hideBootLoad();
+        document.documentElement.classList.remove('has-session');
         console.error('Session restore failed after retry:', err);
         document.getElementById('login-section').classList.remove('d-none');
       })
