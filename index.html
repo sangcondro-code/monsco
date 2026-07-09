@@ -300,8 +300,6 @@
     /* ---- Mobile login: biometric quick-login wrap — hidden by default on
        ALL screen widths (incl. desktop web app); JS only reveals it with
        .show when on a mobile-width screen AND a saved credential exists. */
-    .m-login-bio-wrap{ display:none; }
-    .m-login-bio-wrap.show{ display:block; }
 
     /* Segmented toggle buttons (Type, Setup tabs, etc.) */
     .seg-group { display:inline-flex; border:1px solid #d1d5db; border-radius:.5rem; overflow:hidden; flex-wrap:wrap; }
@@ -1437,18 +1435,24 @@
       .m-toggle input:checked + .m-toggle-track::before{ transform:translateX(19px); }
       .m-toggle input:disabled + .m-toggle-track{ opacity:.5; }
 
-      /* ---- Mobile login: biometric quick-login button ---- */
-      .m-login-bio-divider{
-        display:flex; align-items:center; gap:10px; margin:16px 0; color:#b0bac8; font-size:.72rem; font-weight:700;
-      }
-      .m-login-bio-divider::before, .m-login-bio-divider::after{ content:''; flex:1; height:1px; background:#e8eaed; }
+      /* ---- Mobile login: tombol Login + biometric berdampingan ----
+         Sebelumnya: tombol Login full-width, lalu divider "OR", lalu tombol
+         biometric full-width lagi di bawahnya — makan 2 baris + divider.
+         Sekarang: kalau device punya biometric tersimpan, Login menyusut
+         (flex:1) dan tombol biometric jadi kotak kecil di sampingnya —
+         satu baris saja, tidak ada divider "OR" lagi. Kalau TIDAK ada
+         biometric, Login tetap full-width seperti semula (tidak berubah). */
+      .m-login-btn-row{ display:flex; gap:10px; align-items:stretch; }
+      .m-login-btn-row .btn-login{ width:auto; flex:1; margin:0; }
       .m-login-bio-btn{
-        width:100%; display:flex; align-items:center; justify-content:center; gap:10px;
-        border:1.5px solid var(--brand); color:var(--brand); background:#fff; border-radius:.6rem;
-        padding:.75rem; font-weight:700; font-size:.88rem;
+        display:none; flex-shrink:0; width:52px;
+        align-items:center; justify-content:center;
+        border:1.5px solid var(--brand); color:var(--brand); background:#fff; border-radius:.5rem;
+        font-size:1.25rem; cursor:pointer;
       }
+      .m-login-bio-btn.show{ display:flex; }
       .m-login-bio-btn:active{ background:var(--brand-light); }
-      .m-login-bio-btn i{ font-size:1.1rem; }
+      .m-login-bio-btn:disabled{ opacity:.5; }
     }
       /* ====================================================================
        *  MOBILE APP-FEEL FIXES
@@ -1621,20 +1625,16 @@
             </div>
             <button type="button" onclick="showForgotPassword()" style="background:none;border:none;padding:0;font-size:.82rem;font-weight:600;color:var(--brand);text-decoration:none;cursor:pointer;">Forgot Password?</button>
           </div>
-          <button type="submit" class="btn-login" id="btn-login-submit">
-            <i class="fas fa-sign-in-alt me-2"></i>LOGIN
-          </button>
+          <div class="m-login-btn-row" id="m-login-btn-row">
+            <button type="submit" class="btn-login" id="btn-login-submit">
+              <i class="fas fa-sign-in-alt me-2"></i>LOGIN
+            </button>
+            <button type="button" class="m-login-bio-btn" id="m-login-bio-btn" onclick="mBiometricLogin()" aria-label="Login with Fingerprint or Face ID">
+              <span id="m-login-bio-icon"><i class="fas fa-fingerprint"></i></span>
+            </button>
+          </div>
 
         </form>
-
-        <!-- Biometric quick-login — mobile only, shown only if this device has
-             Fingerprint/Face ID enabled for a saved account (see Security sheet). -->
-        <div class="m-login-bio-wrap" id="m-login-bio-wrap">
-          <div class="m-login-bio-divider">OR</div>
-          <button type="button" class="m-login-bio-btn" id="m-login-bio-btn" onclick="mBiometricLogin()">
-            <i class="fas fa-fingerprint"></i><span id="m-login-bio-label">Login with Fingerprint / Face ID</span>
-          </button>
-        </div>
       </div>
 
       <!-- Forgot Password — INLINE di kartu login yang sama (bukan popup),
@@ -15474,19 +15474,49 @@ function mGetAnyBiometricAccount() {
   return { username: firstKey, record: store[firstKey] };
 }
 
-/* Tampil/sembunyikan tombol "Login with Fingerprint / Face ID" di layar
-   login mobile, tergantung apakah ada biometric record tersimpan di HP ini. */
+/* Deteksi ikon biometric yang paling sesuai device — WebAuthn SENGAJA tidak
+   membocorkan jenis sensor persis (alasan privasi), jadi ini estimasi
+   terbaik yang bisa dilakukan lewat web, bukan deteksi 100% pasti:
+   - iPhone/iPad TANPA tombol Home fisik (resolusi layar bukan 320x568 atau
+     375x667 — dua ukuran itu satu-satunya iPhone modern yang masih pakai
+     Touch ID) → asumsikan Face ID.
+   - Selain itu (Android, iPhone/iPad ber-tombol Home, desktop) → ikon
+     sidik jari, karena itu paling umum di perangkat itu.
+   Font Awesome free TIDAK punya ikon "Face ID" — dibuatkan SVG kecil
+   bergaya bingkai-scan wajah (dipakai luas lintas platform untuk
+   merepresentasikan face-scan) supaya tetap terlihat profesional. */
+function mBiometricIconHtml_() {
+  var ua = navigator.userAgent || '';
+  var isIOS = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if (isIOS) {
+    var w = Math.min(window.screen.width, window.screen.height);
+    var h = Math.max(window.screen.width, window.screen.height);
+    var hasHomeButton = (w === 320 && h === 568) || (w === 375 && h === 667);
+    if (!hasHomeButton) {
+      return '<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em;">' +
+        '<path d="M4 7V5a1 1 0 0 1 1-1h2"/><path d="M17 4h2a1 1 0 0 1 1 1v2"/>' +
+        '<path d="M20 17v2a1 1 0 0 1-1 1h-2"/><path d="M7 20H5a1 1 0 0 1-1-1v-2"/>' +
+        '<circle cx="9" cy="10" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="10" r="1" fill="currentColor" stroke="none"/>' +
+        '<path d="M9 15c1 1 5 1 6 0"/></svg>';
+    }
+  }
+  return '<i class="fas fa-fingerprint"></i>';
+}
+
+/* Tampil/sembunyikan tombol biometric di samping tombol Login (layar login
+   mobile), tergantung apakah ada biometric record tersimpan di HP ini. */
 function mUpdateLoginBiometricButton() {
-  var wrap = document.getElementById('m-login-bio-wrap');
-  if (!wrap) return;
+  var btn = document.getElementById('m-login-bio-btn');
+  if (!btn) return;
   var account = mGetAnyBiometricAccount();
   var isMobileWidth = window.innerWidth <= 768;
   if (account && mWebAuthnSupported() && isMobileWidth) {
-    wrap.classList.add('show');
-    var label = document.getElementById('m-login-bio-label');
-    if (label) label.textContent = 'Login as ' + (account.record.displayName || account.username);
+    btn.classList.add('show');
+    btn.setAttribute('aria-label', 'Login as ' + (account.record.displayName || account.username));
+    var iconEl = document.getElementById('m-login-bio-icon');
+    if (iconEl) iconEl.innerHTML = mBiometricIconHtml_();
   } else {
-    wrap.classList.remove('show');
+    btn.classList.remove('show');
   }
 }
 
