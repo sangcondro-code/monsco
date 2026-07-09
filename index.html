@@ -271,6 +271,27 @@
        putih polos + warna brand, biar tidak kontras/nyala seperti gambar
        loading generik. */
     #loading.boot-loading { background:#ffffff; color:#005CAA; }
+    /* Logo bermerek di layar loading awal — file logo asli app (bukan lagi
+       ikon dibuat ulang), dibulatkan sudutnya lewat border-radius langsung
+       di <img> supaya terlihat seperti app icon (squircle), sama seperti
+       logo di header/login. Sengaja tidak besar-besar (60px, seukuran logo
+       header, bukan 72px seukuran hero di layar login) supaya terasa seperti
+       splash screen app profesional. Tersembunyi default — hanya muncul saat
+       #loading punya class .boot-loading, TIDAK pernah muncul di overlay
+       Saving/Deleting dst. Teks "Memuat sesi..."/dst SENGAJA disembunyikan
+       di layar ini — cukup logo + animasi, tanpa label. */
+    #loading .boot-logo { display:none; }
+    #loading.boot-loading .spinner-border { display:none; }
+    #loading.boot-loading #loading-msg { display:none; }
+    #loading.boot-loading .boot-logo {
+      display:block; width:60px; height:60px; border-radius:16px;
+      object-fit:cover; margin-bottom:0;
+      animation: mBootPulse 1.4s ease-in-out infinite;
+    }
+    @keyframes mBootPulse {
+      0%, 100% { transform:scale(1); opacity:1; }
+      50% { transform:scale(0.9); opacity:0.72; }
+    }
     #loading.show { display:flex; }
     .view { animation:fadeIn .3s ease; }
     @keyframes fadeIn { from{opacity:0;transform:translateY(8px);} to{opacity:1;transform:translateY(0);} }
@@ -1533,7 +1554,7 @@
 </head>
 <body>
 
-<div id="loading"><div class="spinner-border mb-3" style="width:2.5rem;height:2.5rem;"></div><div id="loading-msg">Loading...</div></div>
+<div id="loading"><img class="boot-logo" src="https://raw.githubusercontent.com/sangcondro-code/monsco/refs/heads/main/loading_monsco.jpg" alt="Monsco"><div class="spinner-border mb-3" style="width:2.5rem;height:2.5rem;"></div><div id="loading-msg">Loading...</div></div>
 
 <!-- ============================================================ -->
 <!-- LOGIN                                                         -->
