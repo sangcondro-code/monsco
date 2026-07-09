@@ -5,14 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
   <title>Monsco: Money Management</title>
 
-  <!-- CATATAN: tag-tag PWA (manifest, apple-mobile-web-app-*, theme-color,
-       apple-touch-icon) sudah DIHAPUS dari sini. Halaman ini sekarang selalu
-       dibuka di dalam <iframe> dari wrapper shell (index.html di Vercel/GitHub),
-       dan browser hanya membaca meta tag PWA dari dokumen TOP-LEVEL — bukan
-       dari dalam iframe. Jadi tag-tag itu di sini sudah tidak terpakai sama
-       sekali; semua urusan home-screen/standalone/splash sekarang ditangani
-       sepenuhnya oleh wrapper. Lihat index.html + manifest.json di repo
-       Monsco untuk versi yang aktif. -->
+  <!-- CATATAN (diperbarui): dulu tag ikon/favicon SENGAJA dihapus dari sini
+       karena halaman ini dibuka di dalam <iframe> dari wrapper shell, dan
+       browser hanya membaca meta tag ikon dari dokumen TOP-LEVEL — bukan
+       dari dalam iframe. Sekarang wrapper iframe itu SUDAH TIDAK DIPAKAI
+       (arsitektur baru: Index.html ini langsung di-serve sebagai halaman
+       utama di Vercel/GitHub, manggil backend lewat fetch/RPC, bukan lagi
+       lewat iframe ke script.google.com). Karena Index.html ini SEKARANG
+       adalah dokumen top-level, tag ikon/favicon harus ada di sini secara
+       langsung, memakai file yang sama yang sudah ada di repo GitHub.
+
+       SENGAJA TIDAK memakai manifest.json atau apple-mobile-web-app-capable
+       — tanpa manifest, browser tidak akan menawarkan "Add to Home Screen"
+       sebagai app terinstal (mode PWA/standalone). Cukup favicon tab biasa
+       + ikon bookmark/shortcut kalau user simpan manual ke homescreen. -->
+  <link rel="icon" type="image/png" sizes="32x32" href="https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/favicon-16x16.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/icon-192.png">
+  <link rel="shortcut icon" type="image/png" href="https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/favicon-32x32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="https://cdn.jsdelivr.net/gh/sangcondro-code/Monsco@main/apple-touch-icon.png">
+  <meta name="theme-color" content="#005CAA">
 
   <!-- PERF: preconnect/dns-prefetch ke semua host eksternal yang dipakai
        (CDN CSS/JS + favicon host). Ini bikin browser mulai proses DNS+TLS
@@ -20,13 +32,9 @@
        mulai satu-satu saat masing-masing <link>/<script> ditemukan. -->
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
-  <link rel="preconnect" href="https://i.ibb.co.com" crossorigin>
   <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
   <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
-  <link rel="dns-prefetch" href="https://i.ibb.co.com">
 
-  <link rel="icon" type="image/png" href="https://i.ibb.co.com/4g9PSPBJ/Favicon.png">
-  <link rel="shortcut icon" type="image/png" href="https://i.ibb.co.com/4g9PSPBJ/Favicon.png">
 
   <!-- PERF: Bootstrap CSS tetap render-blocking (sengaja) — hampir semua
        elemen layar Login pakai class Bootstrap, jadi kalau di-defer akan
