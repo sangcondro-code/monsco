@@ -10349,8 +10349,15 @@ function computeInsights() {
    (m-an-insights-wrap) karena isinya sama (1 bulan yang sama). */
 var LAST_AI_INSIGHT_LINES = null; // null = belum pernah generate AI di sesi ini
 
-function buildKeyTakeaway_(insights) {
+function buildKeyTakeaway_(insights, isAi) {
   if (!insights.length) return 'Tidak ada perubahan berarti bulan ini.';
+  // BUG FIX: untuk insight AI, SEMUA baris ditandai type:'good' (tidak ada
+  // yang 'warn'), jadi logika lama selalu fallback ke insights[0] — yang
+  // sebelumnya kebetulan berisi sapaan pembuka AI ("Halo! Senang bisa
+  // membantu..."), bukan insight sungguhan (lihat perbaikan prompt di
+  // generateAIInsight: sekarang baris TERAKHIR yang berisi kesimpulan
+  // paling penting, bukan baris pertama).
+  if (isAi) return insights[insights.length - 1].text;
   var warn = insights.filter(function (i) { return i.type === 'warn'; });
   var pick = warn.length ? warn[0] : insights[0];
   return pick.text;
@@ -10378,7 +10385,7 @@ function renderInsights(targetElId) {
     return '<div class="ai-summary-item ' + ins.type + '"><div class="ai-summary-num">' + num + '</div><div class="ai-summary-text">' + escapeHtml(ins.text) + '</div></div>';
   }).join('');
 
-  var takeaway = buildKeyTakeaway_(insights);
+  var takeaway = buildKeyTakeaway_(insights, isAi);
 
   wrap.innerHTML =
     '<div class="ai-summary-subtitle">' + escapeHtml(title) + '</div>' +
@@ -10454,8 +10461,12 @@ function computeWealthInsights() {
 
 var LAST_WEALTH_AI_LINES = null; // null = belum pernah generate AI Wealth Analysis di sesi ini
 
-function buildWealthKeyTakeaway_(insights) {
+function buildWealthKeyTakeaway_(insights, isAi) {
   if (!insights.length) return 'Belum ada data kekayaan.';
+  // BUG FIX: sama seperti buildKeyTakeaway_ — insight AI sekarang diminta
+  // menaruh kesimpulan/rekomendasi paling penting di baris TERAKHIR (bukan
+  // disclaimer lagi, itu sudah ditampilkan terpisah lewat footnote statis).
+  if (isAi) return insights[insights.length - 1].text;
   var warn = insights.filter(function (i) { return i.type === 'warn'; });
   var pick = warn.length ? warn[0] : insights[0];
   return pick.text;
@@ -10481,7 +10492,7 @@ function renderWealthInsights(targetElId) {
     return '<div class="ai-summary-item ' + ins.type + '"><div class="ai-summary-num">' + num + '</div><div class="ai-summary-text">' + escapeHtml(ins.text) + '</div></div>';
   }).join('');
 
-  var takeaway = buildWealthKeyTakeaway_(insights);
+  var takeaway = buildWealthKeyTakeaway_(insights, isAi);
 
   wrap.innerHTML =
     '<div class="ai-summary-subtitle">' + escapeHtml(title) + '</div>' +
