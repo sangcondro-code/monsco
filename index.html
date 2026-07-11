@@ -9614,7 +9614,10 @@ function renderMobileTransactions() {
       var isIncoming = (t.Category === 'Transfer In' || t.Category === 'Transfer Masuk');
       var trueFrom = isIncoming ? t.CounterpartAccount : t.Account;
       var trueTo = isIncoming ? t.Account : t.CounterpartAccount;
-      categoryDisplay += ' <span style="color:#94a1b2;font-weight:500;">' + escapeHtml(trueFrom) + ' &rarr; ' + escapeHtml(trueTo) + '</span>';
+      // Baris terpisah (bukan sebaris dengan judul) — supaya nama akun yang
+      // panjang tetap rapi & tidak bikin baris jadi kepanjangan/terpotong,
+      // terutama di layar mobile yang sempit.
+      categoryDisplay += '<div style="font-size:.72rem;color:#94a1b2;font-weight:500;margin-top:1px;">' + escapeHtml(trueFrom) + ' &rarr; ' + escapeHtml(trueTo) + '</div>';
     }
     // Mode Select: checkbox menggantikan tombol Edit/Delete, tap di mana pun
     // pada baris langsung toggle pilih (lebih mudah di layar kecil daripada
@@ -11157,7 +11160,9 @@ function renderTransactions() {
         var isIncoming = (t.Category === 'Transfer In' || t.Category === 'Transfer Masuk');
         var trueFrom = isIncoming ? t.CounterpartAccount : t.Account;
         var trueTo = isIncoming ? t.Account : t.CounterpartAccount;
-        categoryDisplay += ' <span class="text-muted small">' + escapeHtml(trueFrom) + ' &rarr; ' + escapeHtml(trueTo) + '</span>';
+        // Baris terpisah (bukan sebaris dengan judul) — sama seperti mobile,
+        // supaya nama akun yang panjang tetap rapi.
+        categoryDisplay += '<div class="text-muted small mt-1">' + escapeHtml(trueFrom) + ' &rarr; ' + escapeHtml(trueTo) + '</div>';
       }
       var checked = TRX_SELECTED[t.ID] ? ' checked' : '';
       var checkCell = TRX_SELECT_MODE ?
