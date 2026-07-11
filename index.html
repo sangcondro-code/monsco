@@ -1938,8 +1938,7 @@
             </div>
           </div>
 
-          <div class="d-flex justify-content-between align-items-center mt-3 mb-1">
-            <label class="form-label fw-bold small mb-0">Category</label>
+          <div class="d-flex justify-content-end align-items-center mt-3 mb-1">
             <div class="form-check form-switch mb-0">
               <input class="form-check-input" type="checkbox" role="switch" id="as-split-toggle" onchange="toggleAddSpendingSplit(this.checked)">
               <label class="form-check-label small text-muted" for="as-split-toggle">Split into multiple categories</label>
@@ -1948,6 +1947,7 @@
 
           <div id="as-single-wrap" class="row g-3">
             <div class="col-md-6">
+              <label class="form-label fw-bold small">Category</label>
               <select class="form-select" id="as-category" required onchange="onAddSpendingCategoryChange()"></select>
             </div>
             <div class="col-md-6 d-none" id="as-debt-wrap">
