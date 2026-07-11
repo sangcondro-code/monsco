@@ -10435,10 +10435,24 @@ function renderDashBankList() {
 /*  berjalan (STATE.month, fallback ke bulan kalender saat ini kalau   */
 /*  filter "All Months") dengan bulan sebelumnya.                      */
 /* ---------------------------------------------------------------- */
+/* DIPERKAYA: sebelumnya cuma 5 aturan tetap & selalu diambil dalam urutan
+ * yang sama (slice(0,4)) — kalau kebetulan lebih dari 4 aturan terpenuhi,
+ * yang tampil selalu 4 pertama, bukan yang paling penting. Sekarang tiap
+ * aturan punya skor "priority" (makin mendesak/besar dampaknya, makin
+ * tinggi), lalu diurutkan & diambil 5 teratas — jadi kombinasi yang tampil
+ * BENAR-BENAR bergantung pada apa yang sedang bergerak di data bulan ini,
+ * bukan selalu 4-5 poin yang sama. Sinyal baru: kategori yang justru turun
+ * (bukan cuma naik), proyeksi akhir bulan (burn rate), porsi tagihan tetap,
+ * rasio cicilan wajib vs income, kategori paling dominan, dan reminder
+ * kalau belum ada transaksi tercatat bulan berjalan. */
 function computeInsights() {
-  var insights = [];
+  var insights = []; // {type:'good'|'warn', icon, text, priority}
+  function push(type, icon, text, priority) { insights.push({ type: type, icon: icon, text: text, priority: priority }); }
+
   var refMonth = STATE.month || (new Date().getMonth() + 1);
   var prevMonth = refMonth === 1 ? 12 : refMonth - 1;
+  var now = new Date();
+  var isCurrentCalendarMonth = (STATE.year === now.getFullYear() && refMonth === now.getMonth() + 1);
 
   var txAll = STATE.data.transactions || [];
   var curTx = txAll.filter(function (t) { return Number(t.Month) === refMonth; });
@@ -10447,20 +10461,21 @@ function computeInsights() {
   var curExpense = sumByGroup(curTx, 'Needs') + sumByGroup(curTx, 'Wants');
   var prevExpense = sumByGroup(prevTx, 'Needs') + sumByGroup(prevTx, 'Wants');
   var curIncome = sumByGroup(curTx, 'Income');
+  var curSavings = sumByGroup(curTx, 'Savings');
+  var curNet = curIncome - curExpense - curSavings;
 
-  // 1) Perubahan total pengeluaran vs bulan lalu
+  // 1) Perubahan total pengeluaran vs bulan lalu (naik ATAU turun)
   if (prevExpense > 0 && curTx.length) {
     var changePct = Math.round(((curExpense - prevExpense) / prevExpense) * 100);
     if (Math.abs(changePct) >= 5) {
-      insights.push({
-        type: changePct > 0 ? 'warn' : 'good',
-        icon: changePct > 0 ? 'fa-arrow-trend-up' : 'fa-arrow-trend-down',
-        text: 'Pengeluaranmu bulan ini ' + Math.abs(changePct) + '% ' + (changePct > 0 ? 'lebih tinggi' : 'lebih rendah') + ' dari bulan lalu (' + rupiah(curExpense) + ' vs ' + rupiah(prevExpense) + ').'
-      });
+      push(changePct > 0 ? 'warn' : 'good', changePct > 0 ? 'fa-arrow-trend-up' : 'fa-arrow-trend-down',
+        'Pengeluaranmu bulan ini ' + Math.abs(changePct) + '% ' + (changePct > 0 ? 'lebih tinggi' : 'lebih rendah') + ' dari bulan lalu (' + rupiah(curExpense) + ' vs ' + rupiah(prevExpense) + ').',
+        40 + Math.min(35, Math.abs(changePct)));
     }
   }
 
-  // 2) Kategori dengan kenaikan terbesar dibanding bulan lalu
+  // 2) Kategori dengan perubahan terbesar dibanding bulan lalu — naik ATAU
+  // turun signifikan (≥20%) sama-sama layak disebut (turun = kabar baik).
   var catGroups = ['Needs', 'Wants'];
   var catDeltas = [];
   catGroups.forEach(function (g) {
@@ -10473,56 +10488,118 @@ function computeInsights() {
       if (prevAmt > 0) catDeltas.push({ cat: cat, delta: curAmt - prevAmt, pct: Math.round(((curAmt - prevAmt) / prevAmt) * 100) });
     });
   });
-  catDeltas.sort(function (a, b) { return b.delta - a.delta; });
-  if (catDeltas.length && catDeltas[0].delta > 0 && catDeltas[0].pct >= 20) {
-    insights.push({
-      type: 'warn', icon: 'fa-magnifying-glass-chart',
-      text: 'Pengeluaran "' + catDeltas[0].cat + '" naik ' + catDeltas[0].pct + '% dibanding bulan lalu (+' + rupiah(catDeltas[0].delta) + ').'
-    });
+  var risers = catDeltas.filter(function (c) { return c.delta > 0 && c.pct >= 20; }).sort(function (a, b) { return b.delta - a.delta; });
+  var fallers = catDeltas.filter(function (c) { return c.delta < 0 && c.pct <= -20; }).sort(function (a, b) { return a.delta - b.delta; });
+  if (risers.length) {
+    push('warn', 'fa-magnifying-glass-chart', 'Pengeluaran "' + risers[0].cat + '" naik ' + risers[0].pct + '% dibanding bulan lalu (+' + rupiah(risers[0].delta) + ').', 55 + Math.min(25, Math.round(risers[0].pct / 3)));
+  }
+  if (fallers.length) {
+    push('good', 'fa-magnifying-glass-chart', 'Pengeluaran "' + fallers[0].cat + '" turun ' + Math.abs(fallers[0].pct) + '% dibanding bulan lalu (hemat ' + rupiah(Math.abs(fallers[0].delta)) + ').', 25);
   }
 
   // 3) Kategori yang melebihi budget bulan ini
   var budgetRows = filterBudgetByMonth(STATE.data.budget, refMonth);
-  var overBudgetCount = 0;
+  var overBudgetItems = [];
+  var totalPlanned = 0;
   budgetRows.filter(function (b) { return b.Group === 'Needs' || b.Group === 'Wants'; }).forEach(function (b) {
+    totalPlanned += Number(b.PlannedAmount) || 0;
     var realization = curTx.filter(function (t) { return t.Group === b.Group && t.Category === b.Category; })
       .reduce(function (s, t) { return s + Number(t.Amount); }, 0);
-    if (realization > Number(b.PlannedAmount)) overBudgetCount++;
+    if (realization > Number(b.PlannedAmount)) overBudgetItems.push(b.Category);
   });
-  if (overBudgetCount > 0) {
-    insights.push({
-      type: 'warn', icon: 'fa-triangle-exclamation',
-      text: overBudgetCount + ' kategori melebihi budget bulan ini. Cek halaman Budgeting untuk detailnya.'
-    });
+  if (overBudgetItems.length > 0) {
+    push('warn', 'fa-triangle-exclamation', overBudgetItems.length + ' kategori melebihi budget bulan ini (' + overBudgetItems.slice(0, 2).join(', ') + (overBudgetItems.length > 2 ? ', dst' : '') + ').', 70);
   }
 
-  // 4) Savings rate bulan ini
+  // 4) Savings rate bulan ini (naik/negatif/rendah — mutually exclusive)
   if (curIncome > 0) {
-    var savingsRate = Math.round((sumByGroup(curTx, 'Savings') / curIncome) * 100);
+    var savingsRate = Math.round((curSavings / curIncome) * 100);
     if (savingsRate >= 20) {
-      insights.push({ type: 'good', icon: 'fa-seedling', text: 'Bagus — kamu menabung ' + savingsRate + '% dari pendapatan bulan ini.' });
-    } else if (curIncome - curExpense - sumByGroup(curTx, 'Savings') < 0) {
-      insights.push({ type: 'warn', icon: 'fa-circle-exclamation', text: 'Pengeluaranmu bulan ini melebihi pendapatan — saldo bersih negatif.' });
+      push('good', 'fa-seedling', 'Bagus — kamu menabung ' + savingsRate + '% dari pendapatan bulan ini.', 20 + Math.min(20, savingsRate - 20));
+    } else if (curNet < 0) {
+      push('warn', 'fa-circle-exclamation', 'Pengeluaranmu bulan ini melebihi pendapatan — saldo bersih negatif ' + rupiah(Math.abs(curNet)) + '.', 95);
+    } else if (savingsRate < 10) {
+      push('warn', 'fa-piggy-bank', 'Savings rate bulan ini cuma ' + savingsRate + '% dari pendapatan — di bawah target sehat 20%.', 45);
     }
   }
 
   // 5) Debt jatuh tempo dalam 7 hari
   var soon = [];
   (STATE.data.debts || []).forEach(function (d) {
-    if (!d.DueDate || Number(d.CurrentBalance) <= 0) return;
+    if (!d.DueDate || Number(d.CurrentBalance) <= 0 || d.Type === 'Receivable') return;
     var due = new Date(d.DueDate);
     if (isNaN(due.getTime())) return;
-    var diffDays = Math.ceil((due - new Date()) / (1000 * 60 * 60 * 24));
-    if (diffDays >= 0 && diffDays <= 7) soon.push(d.Name);
+    var diffDays = Math.ceil((due - now) / (1000 * 60 * 60 * 24));
+    if (diffDays >= 0 && diffDays <= 7) soon.push({ name: d.Name, days: diffDays });
   });
   if (soon.length) {
-    insights.push({ type: 'warn', icon: 'fa-calendar-day', text: 'Jatuh tempo dalam 7 hari: ' + soon.join(', ') + '.' });
+    soon.sort(function (a, b) { return a.days - b.days; });
+    push('warn', 'fa-calendar-day', 'Jatuh tempo dalam 7 hari: ' + soon.map(function (s) { return s.name; }).join(', ') + '.', 85);
+  }
+
+  // 6) NEW — Burn rate: proyeksi akhir bulan berdasar pace harian, HANYA
+  // dihitung kalau bulan yang dilihat adalah bulan kalender BERJALAN dan
+  // sudah cukup hari berjalan (≥5 hari) supaya proyeksinya bermakna.
+  if (isCurrentCalendarMonth && totalPlanned > 0 && now.getDate() >= 5) {
+    var totalDaysInMonth = new Date(STATE.year, refMonth, 0).getDate();
+    var projected = Math.round((curExpense / now.getDate()) * totalDaysInMonth);
+    var projPct = Math.round((projected / totalPlanned) * 100);
+    if (projPct >= 100) {
+      push('warn', 'fa-gauge-high', 'Dengan pace belanja saat ini, proyeksi akhir bulan bisa tembus ' + projPct + '% dari total budget (' + rupiah(projected) + ').', 75);
+    } else if (projPct <= 80) {
+      push('good', 'fa-gauge-high', 'Dengan pace belanja saat ini, proyeksi akhir bulan cuma ' + projPct + '% dari total budget — aman.', 15);
+    }
+  }
+
+  // 7) NEW — Porsi tagihan tetap (RECURRING aktif) terhadap pengeluaran
+  // bulan ini, pemisah "wajib/committed" vs sisanya yang lebih fleksibel.
+  var recurringActive = (STATE.data.recurring || []).filter(function (r) {
+    var isActive = (r.Active === true || String(r.Active).toLowerCase() === 'true');
+    return isActive && (r.Group === 'Needs' || r.Group === 'Wants');
+  });
+  var recurringTotal = recurringActive.reduce(function (s, r) { return s + (Number(r.Amount) || 0); }, 0);
+  if (curExpense > 0 && recurringTotal > 0) {
+    var recurringPct = Math.round(recurringTotal / curExpense * 100);
+    if (recurringPct >= 50) {
+      push('warn', 'fa-repeat', recurringPct + '% dari pengeluaran bulan ini adalah tagihan tetap (' + rupiah(recurringTotal) + ') — ruang gerak fleksibelmu terbatas.', 35);
+    }
+  }
+
+  // 8) NEW — Rasio cicilan wajib (minPayment aktif) vs income bulan ini.
+  var totalMinPayment = (STATE.data.debts || []).filter(function (d) { return d.Type !== 'Receivable' && Number(d.CurrentBalance) > 0; })
+    .reduce(function (s, d) { return s + (Number(d.MinPayment) || 0); }, 0);
+  if (curIncome > 0 && totalMinPayment > 0) {
+    var dsr = Math.round(totalMinPayment / curIncome * 100);
+    if (dsr >= 30) push('warn', 'fa-hand-holding-dollar', 'Cicilan wajib menyerap ' + dsr + '% dari pendapatan bulan ini — cukup berat.', 60);
+  }
+
+  // 9) NEW — Kategori pengeluaran paling dominan bulan ini (konsentrasi).
+  if (curExpense > 0) {
+    var flatExpense = [];
+    catGroups.forEach(function (g) {
+      var byCat = {};
+      curTx.filter(function (t) { return t.Group === g; }).forEach(function (t) { byCat[t.Category] = (byCat[t.Category] || 0) + Number(t.Amount); });
+      Object.keys(byCat).forEach(function (k) { flatExpense.push({ cat: k, amt: byCat[k] }); });
+    });
+    flatExpense.sort(function (a, b) { return b.amt - a.amt; });
+    if (flatExpense.length) {
+      var topPct = Math.round(flatExpense[0].amt / curExpense * 100);
+      if (topPct >= 40) push('warn', 'fa-chart-pie', 'Kategori "' + flatExpense[0].cat + '" menyerap ' + topPct + '% dari total pengeluaran bulan ini (' + rupiah(flatExpense[0].amt) + ').', 30);
+    }
+  }
+
+  // 10) NEW — Reminder kalau bulan berjalan sudah lewat beberapa hari tapi
+  // belum ada satupun transaksi tercatat (supaya insight tetap akurat).
+  if (isCurrentCalendarMonth && now.getDate() >= 5 && curTx.length === 0) {
+    push('warn', 'fa-pen', 'Belum ada transaksi tercatat bulan ini — jangan lupa update supaya insight tetap akurat.', 65);
   }
 
   if (!insights.length) {
-    insights.push({ type: 'good', icon: 'fa-circle-check', text: 'Tidak ada perubahan berarti bulan ini — pertahankan!' });
+    push('good', 'fa-circle-check', 'Tidak ada perubahan berarti bulan ini — pertahankan!', 0);
   }
-  return insights.slice(0, 4);
+
+  insights.sort(function (a, b) { return b.priority - a.priority; });
+  return insights.slice(0, 5);
 }
 
 /* AI insight yang terakhir di-generate disimpan di sini supaya tetap tampil
@@ -10583,19 +10660,39 @@ function renderInsights(targetElId) {
     (m-wl-insights-wrap). Fokus ke komposisi/diversifikasi portofolio dan
     rekomendasi investasi/pengembangan aset — bukan cash flow bulanan. */
 /* ---------------------------------------------------------------- */
+/* DIPERKAYA: sebelumnya cuma 4 aturan tetap (konsentrasi aset, P/L saham,
+ * % utang, net worth) dan SELALU tampil dalam urutan yang sama. Sekarang
+ * ditambah sinyal likuiditas, dana darurat, progres goal tabungan, dan
+ * konsentrasi saham per-ticker — tiap aturan punya skor "priority" lalu
+ * diurutkan & diambil 5 teratas, supaya kombinasi yang tampil BENAR-BENAR
+ * mengikuti kondisi data saat ini, bukan selalu 4 poin yang sama. */
+function avgMonthlyExpenseFromState_() {
+  var byMonth = {};
+  (STATE.data.transactions || []).forEach(function (t) {
+    if (t.Group !== 'Needs' && t.Group !== 'Wants') return;
+    var m = Number(t.Month);
+    byMonth[m] = (byMonth[m] || 0) + Number(t.Amount);
+  });
+  var months = Object.keys(byMonth);
+  if (!months.length) return 0;
+  return months.reduce(function (s, m) { return s + byMonth[m]; }, 0) / months.length;
+}
+
 function computeWealthInsights() {
-  var insights = [];
+  var insights = []; // {type:'good'|'warn', text, priority}
+  function push(type, text, priority) { insights.push({ type: type, text: text, priority: priority }); }
+
   var gsTotal = (STATE.data.setup.savings || []).reduce(function (s, it) { return s + pocketDisplayBalance(it); }, 0);
   var latestByName = {};
   (STATE.data.assets || []).forEach(function (a) {
     if (!latestByName[a.Name] || new Date(a.Date) >= new Date(latestByName[a.Name].Date)) latestByName[a.Name] = a;
   });
   var nonLiquidTotal = Object.keys(latestByName).reduce(function (s, k) { return s + Number(latestByName[k].Value); }, 0);
-  var stocksTotal = 0, stocksBuyTotal = 0;
-  (STATE.data.stocks || []).forEach(function (s) {
-    stocksTotal += (Number(s.Shares) || 0) * (Number(s.CurrentPrice) || 0);
-    stocksBuyTotal += Number(s.TotalBuy) || 0;
+  var stockRows = (STATE.data.stocks || []).map(function (s) {
+    return { ticker: s.Ticker, value: (Number(s.Shares) || 0) * (Number(s.CurrentPrice) || 0), buy: Number(s.TotalBuy) || 0 };
   });
+  var stocksTotal = stockRows.reduce(function (s, r) { return s + r.value; }, 0);
+  var stocksBuyTotal = stockRows.reduce(function (s, r) { return s + r.buy; }, 0);
   // Konsisten dengan perbaikan bug Net Worth sebelumnya: Receivable = aset, bukan liabilitas.
   var payableTotal = (STATE.data.debts || []).filter(function (d) { return d.Type !== 'Receivable'; })
     .reduce(function (s, d) { return s + (Number(d.CurrentBalance) || 0); }, 0);
@@ -10604,6 +10701,7 @@ function computeWealthInsights() {
   var grossWealth = gsTotal + nonLiquidTotal + stocksTotal + receivableTotal;
   var netWorth = grossWealth - payableTotal;
 
+  // 1) Konsentrasi kelas aset terbesar terhadap kekayaan kotor
   if (grossWealth > 0) {
     var parts = [
       { label: 'General Savings', value: gsTotal },
@@ -10614,32 +10712,75 @@ function computeWealthInsights() {
     if (parts.length) {
       var topPct = Math.round(parts[0].value / grossWealth * 100);
       if (topPct >= 70) {
-        insights.push({ type: 'warn', text: parts[0].label + ' mencakup ' + topPct + '% dari total kekayaan kotor kamu — cukup terkonsentrasi, pertimbangkan diversifikasi ke jenis aset lain.' });
+        push('warn', parts[0].label + ' mencakup ' + topPct + '% dari total kekayaan kotor kamu — cukup terkonsentrasi, pertimbangkan diversifikasi ke jenis aset lain.', 55 + Math.min(25, topPct - 70));
       } else {
-        insights.push({ type: 'good', text: parts[0].label + ' adalah aset terbesarmu, ' + topPct + '% dari kekayaan kotor.' });
+        push('good', parts[0].label + ' adalah aset terbesarmu, ' + topPct + '% dari kekayaan kotor.', 10);
       }
     }
   }
 
+  // 2) P/L saham belum direalisasi
   if (stocksTotal > 0 || stocksBuyTotal > 0) {
     var pl = stocksTotal - stocksBuyTotal;
     var plPct = stocksBuyTotal ? Math.round(pl / stocksBuyTotal * 100) : 0;
-    insights.push({ type: pl >= 0 ? 'good' : 'warn', text: 'Portofolio sahammu ' + (pl >= 0 ? 'naik' : 'turun') + ' ' + rupiah(Math.abs(pl)) + ' (' + (plPct >= 0 ? '+' : '') + plPct + '%) belum direalisasikan.' });
+    push(pl >= 0 ? 'good' : 'warn', 'Portofolio sahammu ' + (pl >= 0 ? 'naik' : 'turun') + ' ' + rupiah(Math.abs(pl)) + ' (' + (plPct >= 0 ? '+' : '') + plPct + '%) belum direalisasikan.', pl >= 0 ? 20 : 50);
   }
 
+  // 3) Utang aktif vs kekayaan kotor
   if (payableTotal > 0) {
     var debtPct = grossWealth > 0 ? Math.round(payableTotal / grossWealth * 100) : 100;
-    insights.push({ type: debtPct >= 30 ? 'warn' : 'good', text: 'Utang aktif sebesar ' + rupiah(payableTotal) + ', sekitar ' + debtPct + '% dari kekayaan kotor.' });
+    push(debtPct >= 30 ? 'warn' : 'good', 'Utang aktif sebesar ' + rupiah(payableTotal) + ', sekitar ' + debtPct + '% dari kekayaan kotor.', debtPct >= 30 ? 60 : 15);
   }
 
+  // 4) Net Worth saat ini
   if (grossWealth > 0) {
-    insights.push({ type: netWorth >= 0 ? 'good' : 'warn', text: 'Net Worth saat ini ' + rupiah(netWorth) + '.' });
+    push(netWorth >= 0 ? 'good' : 'warn', 'Net Worth saat ini ' + rupiah(netWorth) + '.', netWorth >= 0 ? 5 : 90);
+  }
+
+  // 5) NEW — Rasio likuiditas (tabungan + saham) terhadap kekayaan kotor.
+  if (grossWealth > 0) {
+    var liquidityPct = Math.round((gsTotal + stocksTotal) / grossWealth * 100);
+    if (liquidityPct < 20) push('warn', 'Cuma ' + liquidityPct + '% kekayaanmu dalam bentuk likuid (tabungan+saham) — sisanya terkunci di aset non-likuid.', 65);
+  }
+
+  // 6) NEW — Dana darurat setara berapa bulan pengeluaran (dari rata-rata
+  // pengeluaran bulan-bulan yang ada datanya di tahun yang sedang dilihat).
+  var avgExpense = avgMonthlyExpenseFromState_();
+  if (avgExpense > 0) {
+    var efMonths = Math.round((gsTotal / avgExpense) * 10) / 10;
+    if (efMonths < 3) push('warn', 'Dana darurat (tabungan) cuma setara ' + efMonths + ' bulan pengeluaran — idealnya 3-6 bulan.', 80);
+    else if (efMonths >= 6) push('good', 'Dana darurat sudah setara ' + efMonths + ' bulan pengeluaran — di atas standar aman 3-6 bulan.', 12);
+  }
+
+  // 7) NEW — Progres goal tabungan: highlight yang paling dekat selesai
+  // (≥90%) atau yang paling tertinggal (<25% dan sudah ada nominal target).
+  var goalsWithTarget = (STATE.data.setup.savings || []).map(function (it) {
+    var balance = pocketDisplayBalance(it);
+    var target = Number(it.GoalTarget) || 0;
+    return { name: it.Name, balance: balance, target: target, pct: target > 0 ? Math.round(balance / target * 100) : null };
+  }).filter(function (g) { return g.target > 0; });
+  var nearDone = goalsWithTarget.filter(function (g) { return g.pct >= 90 && g.pct < 100; }).sort(function (a, b) { return b.pct - a.pct; });
+  var achieved = goalsWithTarget.filter(function (g) { return g.pct >= 100; });
+  if (nearDone.length) {
+    push('good', 'Goal tabungan "' + nearDone[0].name + '" sudah ' + nearDone[0].pct + '% tercapai — tinggal sedikit lagi!', 32);
+  } else if (achieved.length) {
+    push('good', 'Goal tabungan "' + achieved[0].name + '" sudah tercapai 100% (' + rupiah(achieved[0].balance) + ').', 28);
+  }
+
+  // 8) NEW — Konsentrasi saham per-ticker (beda dari konsentrasi kelas aset
+  // di poin 1 — ini spesifik risiko dalam portofolio saham itu sendiri).
+  if (stocksTotal > 0 && stockRows.length > 1) {
+    var maxStock = stockRows.reduce(function (m, r) { return r.value > m.value ? r : m; }, stockRows[0]);
+    var concPct = Math.round(maxStock.value / stocksTotal * 100);
+    if (concPct >= 60) push('warn', 'Saham ' + maxStock.ticker + ' mencakup ' + concPct + '% dari total portofolio sahammu — cukup terkonsentrasi di satu ticker.', 40);
   }
 
   if (!insights.length) {
-    insights.push({ type: 'good', text: 'Tambahkan Tabungan, Aset, atau Saham di bawah untuk melihat insight kekayaan di sini.' });
+    push('good', 'Tambahkan Tabungan, Aset, atau Saham di bawah untuk melihat insight kekayaan di sini.', 0);
   }
-  return insights.slice(0, 4);
+
+  insights.sort(function (a, b) { return b.priority - a.priority; });
+  return insights.slice(0, 5);
 }
 
 var LAST_WEALTH_AI_LINES = null; // null = belum pernah generate AI Wealth Analysis di sesi ini
