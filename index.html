@@ -8118,16 +8118,18 @@ function computeAccountBalances() {
     // PENTING (fitur Transfer Antar Akun — lihat addAccountTransfer() di
     // Kode.gs): SEBELUM ada Group='Transfer', rumus di sini cuma 2 kasus
     // (Income = +, selain itu = -). Kalau baris Transfer dibiarkan jatuh ke
-    // default "-", KEDUA sisinya (Transfer Keluar MAUPUN Transfer Masuk)
-    // akan sama-sama MENGURANGI akun masing-masing — uang kelihatan hilang
-    // dari kedua akun sekaligus, padahal seharusnya cuma pindah tempat
-    // (akun asal berkurang, akun tujuan bertambah, totalnya tidak berubah).
+    // default "-", KEDUA sisinya (Transfer Out MAUPUN Transfer In) akan
+    // sama-sama MENGURANGI akun masing-masing — uang kelihatan hilang dari
+    // kedua akun sekaligus, padahal seharusnya cuma pindah tempat (akun
+    // asal berkurang, akun tujuan bertambah, totalnya tidak berubah).
     // Category-lah yang menentukan arahnya untuk Group ini, bukan Group itu
-    // sendiri: 'Transfer Masuk' = uang MASUK ke akun ini (+), 'Transfer
-    // Keluar' = uang KELUAR dari akun ini (-).
+    // sendiri: 'Transfer In' = uang MASUK ke akun ini (+), 'Transfer Out' =
+    // uang KELUAR dari akun ini (-). 'Transfer Masuk' juga tetap dicek di
+    // sini (nama lama sebelum kategori ini diubah ke bahasa Inggris) supaya
+    // transfer yang sudah sempat tercatat sebelumnya tetap terhitung benar.
     var sign;
     if (t.Group === 'Income') sign = 1;
-    else if (t.Group === 'Transfer') sign = (t.Category === 'Transfer Masuk') ? 1 : -1;
+    else if (t.Group === 'Transfer') sign = (t.Category === 'Transfer In' || t.Category === 'Transfer Masuk') ? 1 : -1;
     else sign = -1;
     balances[t.Account] = (balances[t.Account] || 0) + sign * (Number(t.Amount) || 0);
   });
@@ -8178,7 +8180,7 @@ function renderMobileBank() {
  *  TRANSFER ANTAR AKUN (mobile) — bottom sheet kecil di halaman Accounts,
  *  tepat di bawah stat card Total Across Accounts. Cukup pilih akun asal,
  *  akun tujuan, & jumlah — sistem otomatis mencatat sepasang transaksi
- *  Transfer Keluar/Transfer Masuk yang saling terhubung (lihat
+ *  Transfer Out/Transfer In yang saling terhubung (lihat
  *  addAccountTransfer() di Kode.gs). TIDAK mempengaruhi Budgeting maupun
  *  Laporan Income/Expense sama sekali (Group='Transfer' sengaja
  *  dikecualikan dari situ), tapi tetap memperbarui saldo per akun (lihat
@@ -9600,13 +9602,19 @@ function renderMobileTransactions() {
     var splitBadge = (t.SplitGroupID && splitGroupCounts[t.SplitGroupID] > 1) ?
       '<span class="m-tx-note" style="color:#5b21b6;"><i class="fas fa-layer-group me-1" style="font-size:.55rem;opacity:.8;"></i>Split</span>' : '';
     var isChecked = !!M_TX_SELECTED[t.ID];
-    // Transaksi Transfer Antar Akun: tampilkan arahnya (mis. "→ CIMB NIAGA")
-    // supaya langsung terlihat pasangan akunnya — sama seperti desktop
-    // (lihat renderTransactions/categoryDisplay).
+    // Transaksi Transfer Antar Akun: tampilkan ARAH LENGKAP & SELALU SAMA di
+    // kedua sisi (mis. "BRI → Cash" persis sama baik dilihat dari baris
+    // Transfer Out MAUPUN baris Transfer In pasangannya) — sama seperti
+    // desktop (lihat renderTransactions/categoryDisplay). 'Transfer Masuk'
+    // ikut dicek sebagai fallback nama lama (sebelum kategori ini diubah ke
+    // bahasa Inggris) supaya transfer yang sudah sempat tercatat sebelumnya
+    // tetap tampil benar.
     var categoryDisplay = escapeHtml(t.Category);
     if (t.Group === 'Transfer' && t.CounterpartAccount) {
-      var arrow = (t.Category === 'Transfer Masuk') ? '&larr; ' : '&rarr; ';
-      categoryDisplay += ' <span style="color:#94a1b2;font-weight:500;">' + arrow + escapeHtml(t.CounterpartAccount) + '</span>';
+      var isIncoming = (t.Category === 'Transfer In' || t.Category === 'Transfer Masuk');
+      var trueFrom = isIncoming ? t.CounterpartAccount : t.Account;
+      var trueTo = isIncoming ? t.Account : t.CounterpartAccount;
+      categoryDisplay += ' <span style="color:#94a1b2;font-weight:500;">' + escapeHtml(trueFrom) + ' &rarr; ' + escapeHtml(trueTo) + '</span>';
     }
     // Mode Select: checkbox menggantikan tombol Edit/Delete, tap di mana pun
     // pada baris langsung toggle pilih (lebih mudah di layar kecil daripada
@@ -10945,8 +10953,8 @@ function saveAddSpending(e) {
 /* ==================================================================
  *  TRANSFER ANTAR AKUN (desktop) — halaman penuh tersendiri di sidebar,
  *  persis di bawah Add Spending. Cukup pilih akun asal, akun tujuan, &
- *  jumlah — sistem otomatis mencatat sepasang transaksi Transfer Keluar/
- *  Transfer Masuk yang saling terhubung (lihat addAccountTransfer() di
+ *  jumlah — sistem otomatis mencatat sepasang transaksi Transfer Out/
+ *  Transfer In yang saling terhubung (lihat addAccountTransfer() di
  *  Kode.gs). TIDAK mempengaruhi Budgeting maupun Laporan Income/Expense
  *  sama sekali (Group='Transfer' sengaja dikecualikan dari situ), tapi
  *  tetap memperbarui saldo per akun (lihat computeAccountBalances()).
@@ -11136,14 +11144,20 @@ function renderTransactions() {
     tbody.innerHTML = list.map(function (t) {
       var tagBadge = t.Tag ? '<span class="badge-grp" style="background:#ede9fe;color:#5b21b6;margin-left:5px;">' + escapeHtml(t.Tag) + '</span>' : '';
       var splitBadge = (t.SplitGroupID && splitGroupCounts[t.SplitGroupID] > 1) ? '<span class="badge-split" title="Part of a split entry"><i class="fas fa-layer-group"></i> Split</span>' : '';
-      // Transaksi Transfer Antar Akun: tampilkan arahnya (mis. "→ CIMB NIAGA"
-      // untuk sisi Keluar, "← BRI" untuk sisi Masuk) supaya langsung terlihat
-      // pasangan akunnya tanpa perlu buka detail (lihat CounterpartAccount
-      // di addAccountTransfer(), Kode.gs).
+      // Transaksi Transfer Antar Akun: tampilkan ARAH LENGKAP & SELALU SAMA
+      // di kedua sisi (mis. "BRI → Cash" persis sama baik dilihat dari baris
+      // Transfer Out MAUPUN baris Transfer In pasangannya) — bukan panah
+      // yang membalik arah tiap sisi, supaya tidak perlu mencocokkan ke
+      // kolom Account di bawahnya untuk paham alurnya. 'Transfer Masuk' ikut
+      // dicek sebagai fallback nama lama (sebelum kategori ini diubah ke
+      // bahasa Inggris) supaya transfer yang sudah sempat tercatat
+      // sebelumnya tetap tampil benar.
       var categoryDisplay = escapeHtml(t.Category);
       if (t.Group === 'Transfer' && t.CounterpartAccount) {
-        var arrow = (t.Category === 'Transfer Masuk') ? '&larr; ' : '&rarr; ';
-        categoryDisplay += ' <span class="text-muted small">' + arrow + escapeHtml(t.CounterpartAccount) + '</span>';
+        var isIncoming = (t.Category === 'Transfer In' || t.Category === 'Transfer Masuk');
+        var trueFrom = isIncoming ? t.CounterpartAccount : t.Account;
+        var trueTo = isIncoming ? t.Account : t.CounterpartAccount;
+        categoryDisplay += ' <span class="text-muted small">' + escapeHtml(trueFrom) + ' &rarr; ' + escapeHtml(trueTo) + '</span>';
       }
       var checked = TRX_SELECTED[t.ID] ? ' checked' : '';
       var checkCell = TRX_SELECT_MODE ?
