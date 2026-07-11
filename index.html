@@ -259,6 +259,7 @@
     .badge-needs   { background:#fee2e2; color:#991b1b; }
     .badge-wants   { background:#fef3c7; color:#92400e; }
     .badge-savings { background:#e0f2fe; color:#0284c7; }
+    .badge-transfer{ background:#f1f5f9; color:#475569; }
     .badge-split   { background:#ede9fe; color:#5b21b6; font-size:.68rem; padding:2px 7px; border-radius:4px; font-weight:700; white-space:nowrap; margin-left:5px; }
 
     .trx-select-mode-btn {
@@ -742,6 +743,17 @@
       .m-balance-spending-row span{ font-size:.66rem; text-transform:uppercase; letter-spacing:.5px; opacity:.75; font-weight:600; }
       .m-balance-spending-row b{ font-size:.78rem; font-weight:700; opacity:.95; }
 
+      /* Tombol Transfer/Withdraw di halaman Accounts (mobile) — persis di
+         bawah stat card Total Across Accounts (lihat #m-view-bank). Membuka
+         bottom sheet mOpenAccountTransfer(). */
+      .m-bk-transfer-btn{
+        width:100%; display:flex; align-items:center; justify-content:center; gap:8px;
+        background:var(--brand); color:#fff; border:none; border-radius:12px; padding:12px 0;
+        font-weight:700; font-size:.82rem; box-shadow:0 6px 14px rgba(0,92,170,.25);
+        margin-bottom:16px;
+      }
+      .m-bk-transfer-btn:active{ transform:scale(.97); }
+
       /* Balance layer — Net Balance (biru, rounded penuh) mengambang di atas
          wrapper putih yang ditarik ke atas menggunakan negative margin trick.
          Hasilnya: satu kotak besar dengan stat card biru di atas + menu di bawah,
@@ -1179,6 +1191,7 @@
       .m-tx-badge.needs  { background:#fee2e2; color:#dc2626; }
       .m-tx-badge.wants  { background:#fef3c7; color:#d97706; }
       .m-tx-badge.savings{ background:#e0f2fe; color:#0284c7; }
+      .m-tx-badge.transfer{ background:#f1f5f9; color:#475569; }
       .m-tx-info{ flex:1; min-width:0; }
       .m-tx-info-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
       /* BUG FIX "kategori panjang kepotong": sama seperti Note — dulu nama
@@ -1192,6 +1205,7 @@
       .m-tx-amount.needs   { color:#dc2626; }
       .m-tx-amount.wants   { color:#d97706; }
       .m-tx-amount.savings { color:#0284c7; }
+      .m-tx-amount.transfer{ color:#475569; }
       .m-tx-meta{ display:flex; align-items:center; gap:8px; margin-top:3px; flex-wrap:wrap; }
       .m-tx-date{ font-size:.7rem; color:#94a1b2; font-weight:600; }
       .m-tx-acct{ font-size:.7rem; color:#64748b; background:#f1f5f9; border-radius:5px; padding:1px 7px; }
@@ -1795,6 +1809,7 @@
 
     <div class="nav-label">Quick Add</div>
     <div class="nav-item" id="nav-add-spending" onclick="go('add-spending')"><i class="fas fa-plus-circle"></i> Add Spending</div>
+    <div class="nav-item" id="nav-transfer-account" onclick="go('transfer-account')"><i class="fas fa-right-left"></i> Transfer Account</div>
     <div class="nav-item" id="nav-transactions" onclick="go('transactions')"><i class="fas fa-history"></i> Transactions</div>
     <div class="nav-item" id="nav-budgeting" onclick="go('budgeting')"><i class="fas fa-coins"></i> Budgeting</div>
     <div class="nav-item" id="nav-recurring" onclick="go('recurring')"><i class="fas fa-rotate"></i> Recurring</div>
@@ -1889,7 +1904,7 @@
         </div></div></div>
         <div class="col-lg-5"><div class="card h-100"><div class="card-body">
           <div class="d-flex justify-content-between align-items-center mb-3">
-            <div class="fw-bold">Bank Accounts</div>
+            <div class="fw-bold">Accounts</div>
             <div class="fw-bold" style="color:var(--brand);" id="dash-bank-total">Rp 0</div>
           </div>
           <div id="dash-bank-list" style="height:280px;overflow-y:auto;"></div>
@@ -1990,6 +2005,43 @@
       </div></div>
     </div>
 
+    <!-- ======================== TRANSFER ACCOUNT ======================== -->
+    <div id="view-transfer-account" class="view d-none">
+      <h4 class="page-title mb-1"><i class="fas fa-right-left me-2" style="color:var(--brand);"></i>Transfer Account</h4>
+      <div class="text-muted small mb-3">Move money between your own accounts — e.g. cash withdrawal (transfer to a "Cash" account) or moving funds between banks. Doesn't affect Budgeting or Income/Expense reports, only account balances.</div>
+      <div class="card"><div class="card-body">
+
+        <form onsubmit="saveAccountTransfer(event)">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label fw-bold small">From Account</label>
+              <select class="form-select" id="at-from" required></select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold small">To Account</label>
+              <select class="form-select" id="at-to" required></select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold small">Amount (Rp)</label>
+              <input type="text" class="form-control input-rp" id="at-amount" placeholder="0" inputmode="numeric" oninput="bindRupiahInputEvent(this)" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold small">Date</label>
+              <input type="date" class="form-control" id="at-date" required>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-bold small">Note <span class="text-muted fw-normal">(optional)</span></label>
+              <input type="text" class="form-control" id="at-note" placeholder="e.g. Cash withdrawal">
+            </div>
+          </div>
+          <div class="d-flex gap-2 mt-4 pt-3 border-top">
+            <button type="button" class="btn btn-light border flex-fill" onclick="resetTransferAccountForm()"><i class="fas fa-undo me-1"></i>Reset</button>
+            <button type="submit" class="btn flex-fill text-white fw-bold" style="background:var(--brand);"><i class="fas fa-right-left me-1"></i>Transfer</button>
+          </div>
+        </form>
+      </div></div>
+    </div>
+
     <!-- ======================== TRANSACTIONS ======================== -->
     <div id="view-transactions" class="view d-none">
       <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
@@ -2002,6 +2054,7 @@
             <option value="Needs">Needs</option>
             <option value="Wants">Wants</option>
             <option value="Savings">Savings</option>
+            <option value="Transfer">Transfer</option>
           </select>
           <select class="form-select form-select-sm" id="trx-account-filter" style="width:130px;" onchange="renderTransactions()">
             <option value="">All Accounts</option>
@@ -2498,7 +2551,7 @@
       </div>
 
       <div id="spanel-account" class="setup-panel d-none">
-        <p class="empty-hint mb-3"><i class="fas fa-info-circle me-1"></i>Manage your bank/e-wallet accounts. Used in Add Spending, Budgeting (Add Income/Add Saving), and Wealth Management.</p>
+        <p class="empty-hint mb-3"><i class="fas fa-info-circle me-1"></i>Manage your bank/e-wallet accounts. Used in Add Spending, Transfer Account, Budgeting (Add Income/Add Saving), and Wealth Management.</p>
         <div class="card"><div class="card-body">
           <div class="d-flex gap-2 mb-3">
             <input type="text" class="form-control" id="sinput-account" placeholder="New account name, e.g. Jago">
@@ -3607,7 +3660,7 @@
             </button>
             <button type="button" class="m-quick-item" onclick="mGo('bank')">
               <div class="m-quick-icon"><i class="fas fa-building-columns"></i></div>
-              <div class="m-quick-label">Bank</div>
+              <div class="m-quick-label">Accounts</div>
             </button>
           </div>
         </div>
@@ -3881,7 +3934,7 @@
     <div id="m-view-bank" class="m-view">
       <div class="m-subpage-header">
         <button type="button" class="m-subpage-back" onclick="mGo('home')"><i class="fas fa-arrow-left"></i></button>
-        <div class="m-subpage-title">Bank Accounts</div>
+        <div class="m-subpage-title">Accounts</div>
       </div>
       <p class="m-sheet-hint"><i class="fas fa-circle-info me-1"></i>Estimated balance per account, calculated from this year's recorded transactions and pocket activity.</p>
 
@@ -3889,6 +3942,10 @@
         <div class="m-balance-label">Total Across Accounts<span class="m-balance-sub">All bank &amp; e-wallet accounts</span></div>
         <div class="m-balance-amount" id="m-bk-total">Rp 0</div>
       </div>
+
+      <button type="button" class="m-bk-transfer-btn" onclick="mOpenAccountTransfer()">
+        <i class="fas fa-right-left"></i>Transfer / Withdraw Cash
+      </button>
 
       <div id="m-bk-list"></div>
     </div>
@@ -4067,6 +4124,7 @@
             <option value="Needs">Needs</option>
             <option value="Wants">Wants</option>
             <option value="Savings">Savings</option>
+            <option value="Transfer">Transfer</option>
           </select>
           <select class="m-tx-select" id="m-tx-tag" onchange="renderMobileTransactions()">
             <option value="">All Tags</option>
@@ -5683,7 +5741,7 @@ function onYearChange(sel) {
 /* ---------------------------------------------------------------- */
 /*  NAVIGATION                                                        */
 /* ---------------------------------------------------------------- */
-var VIEWS = ['dashboard', 'add-spending', 'transactions', 'budgeting', 'recurring', 'reminders', 'asset', 'fire-calculator', 'debt', 'setup'];
+var VIEWS = ['dashboard', 'add-spending', 'transfer-account', 'transactions', 'budgeting', 'recurring', 'reminders', 'asset', 'fire-calculator', 'debt', 'setup'];
 
 function go(view) {
   // Close inline pocket detail when leaving the wealth/asset page
@@ -5719,6 +5777,7 @@ function renderCurrentView() {
   switch (STATE.currentView) {
     case 'dashboard': renderDashboard(); break;
     case 'add-spending': prepareAddSpendingForm(); break;
+    case 'transfer-account': prepareTransferAccountForm(); break;
     case 'transactions': renderTransactions(); break;
     case 'budgeting': renderBudgeting(); break;
     case 'recurring': renderRecurring(); break;
@@ -8045,10 +8104,10 @@ function mDeleteStockMobile(id) {
 /*  pocket Add/Withdraw activity tagged to that account. Read-only.  */
 /* ---------------------------------------------------------------- */
 /* Shared helper — computes an estimated balance per account from this
-   year's transactions (Income adds, Needs/Wants/Savings subtract) plus
-   pocket Add/Withdraw activity tagged to that account. Used by both the
-   mobile Bank tab and the desktop Report's Bank Accounts panel, so the
-   numbers always match. */
+   year's transactions (Income adds, Needs/Wants/Savings subtract, Transfer
+   moves between two accounts) plus pocket Add/Withdraw activity tagged to
+   that account. Used by both the mobile Bank tab and the desktop Report's
+   Bank Accounts panel, so the numbers always match. */
 function computeAccountBalances() {
   var accounts = STATE.data.setup.account || [];
   var balances = {};
@@ -8056,7 +8115,20 @@ function computeAccountBalances() {
 
   (STATE.data.transactions || []).forEach(function (t) {
     if (!(t.Account in balances)) balances[t.Account] = balances[t.Account] || 0;
-    var sign = t.Group === 'Income' ? 1 : -1;
+    // PENTING (fitur Transfer Antar Akun — lihat addAccountTransfer() di
+    // Kode.gs): SEBELUM ada Group='Transfer', rumus di sini cuma 2 kasus
+    // (Income = +, selain itu = -). Kalau baris Transfer dibiarkan jatuh ke
+    // default "-", KEDUA sisinya (Transfer Keluar MAUPUN Transfer Masuk)
+    // akan sama-sama MENGURANGI akun masing-masing — uang kelihatan hilang
+    // dari kedua akun sekaligus, padahal seharusnya cuma pindah tempat
+    // (akun asal berkurang, akun tujuan bertambah, totalnya tidak berubah).
+    // Category-lah yang menentukan arahnya untuk Group ini, bukan Group itu
+    // sendiri: 'Transfer Masuk' = uang MASUK ke akun ini (+), 'Transfer
+    // Keluar' = uang KELUAR dari akun ini (-).
+    var sign;
+    if (t.Group === 'Income') sign = 1;
+    else if (t.Group === 'Transfer') sign = (t.Category === 'Transfer Masuk') ? 1 : -1;
+    else sign = -1;
     balances[t.Account] = (balances[t.Account] || 0) + sign * (Number(t.Amount) || 0);
   });
   (STATE.data.pocket || []).forEach(function (p) {
@@ -8100,6 +8172,85 @@ function renderMobileBank() {
         '</div>' +
       '</div>';
   }).join('');
+}
+
+/* ==================================================================
+ *  TRANSFER ANTAR AKUN (mobile) — bottom sheet kecil di halaman Accounts,
+ *  tepat di bawah stat card Total Across Accounts. Cukup pilih akun asal,
+ *  akun tujuan, & jumlah — sistem otomatis mencatat sepasang transaksi
+ *  Transfer Keluar/Transfer Masuk yang saling terhubung (lihat
+ *  addAccountTransfer() di Kode.gs). TIDAK mempengaruhi Budgeting maupun
+ *  Laporan Income/Expense sama sekali (Group='Transfer' sengaja
+ *  dikecualikan dari situ), tapi tetap memperbarui saldo per akun (lihat
+ *  computeAccountBalances()).
+ * ================================================================== */
+function mOpenAccountTransfer() {
+  var body = document.getElementById('m-sheet-body');
+  body.innerHTML =
+    '<div class="m-form-field">' +
+      '<label class="m-form-label">Date</label>' +
+      '<input type="date" class="m-form-input" id="m-at-date">' +
+    '</div>' +
+    '<div class="m-form-field">' +
+      '<label class="m-form-label">From Account</label>' +
+      '<select class="m-form-select" id="m-at-from"></select>' +
+    '</div>' +
+    '<div class="m-form-field">' +
+      '<label class="m-form-label">To Account</label>' +
+      '<select class="m-form-select" id="m-at-to"></select>' +
+    '</div>' +
+    '<div class="m-form-field">' +
+      '<label class="m-form-label">Amount (Rp)</label>' +
+      '<div class="m-form-amount-wrap"><span class="m-form-amount-prefix">Rp</span>' +
+      '<input type="text" class="m-form-input is-amount with-prefix" id="m-at-amount" placeholder="0" inputmode="numeric" oninput="bindRupiahInputEvent(this)"></div>' +
+    '</div>' +
+    '<div class="m-form-field">' +
+      '<label class="m-form-label">Note <span class="text-muted fw-normal">(optional)</span></label>' +
+      '<input type="text" class="m-form-input" id="m-at-note" placeholder="e.g. Cash withdrawal">' +
+    '</div>' +
+    '<div class="m-sheet-hint mb-2"><i class="fas fa-circle-info me-1"></i>Doesn\'t affect Budgeting or Income/Expense reports — only moves money between your accounts. Tip: to withdraw cash, add a "Cash" account first in Setup, then transfer to it here.</div>' +
+    '<div class="m-form-actions" style="border-top:none;padding-top:0;margin-top:8px;">' +
+      '<button type="button" class="m-form-btn-save" onclick="mSaveAccountTransfer()"><i class="fas fa-right-left"></i>Transfer</button>' +
+    '</div>';
+
+  populateAccountSelect('m-at-from');
+  populateAccountSelect('m-at-to');
+  document.getElementById('m-at-date').value = todayISO();
+
+  mOpenSheet('Transfer Between Accounts', 'fa-right-left');
+}
+
+function mSaveAccountTransfer() {
+  if (mGuardArchiveReadOnly()) return;
+  var payload = {
+    date: document.getElementById('m-at-date').value,
+    fromAccount: document.getElementById('m-at-from').value,
+    toAccount: document.getElementById('m-at-to').value,
+    amount: rawNumber(document.getElementById('m-at-amount')),
+    note: document.getElementById('m-at-note').value.trim()
+  };
+  if (!payload.date) { mToast('Please select a date.', 'warn'); return; }
+  if (!payload.fromAccount || !payload.toAccount) { mToast('Please select both accounts. Add one in Setup first.', 'warn'); return; }
+  if (payload.fromAccount === payload.toAccount) { mToast('Source and destination account must be different.', 'warn'); return; }
+  if (!payload.amount || payload.amount <= 0) { mToast('Please enter a valid amount.', 'warn'); return; }
+
+  showLoad('Saving transfer...');
+  google.script.run
+    .withSuccessHandler(function (res) {
+      hideLoad();
+      if (!res.success) { mToast(res.message || 'Failed.', 'error'); return; }
+      var inYear = mAcceptTxYearOrWarn_(res.actualYear);
+      if (inYear) {
+        STATE.data.transactions.push(res.outRecord);
+        STATE.data.transactions.push(res.inRecord);
+        mToast('Transfer saved!', 'success');
+      }
+      mCloseSheet();
+      renderMobileBank();
+      refreshActiveMobileView();
+    })
+    .withFailureHandler(function (err) { hideLoad(); mToast(err.message || 'Failed.', 'error'); })
+    .addAccountTransfer(STATE.year, payload);
 }
 
 
@@ -9339,6 +9490,7 @@ function mBulkDeleteTx() {
             STATE.data.transactions = STATE.data.transactions.filter(function (t) { return t.ID !== r2.id; });
             applySavingsBalance(r2.savingsCategory, r2.savingsBalance);
             applyPocketTransferDeleted(r2.pocketTransferDeleted);
+            removeLinkedTransaction(r2.linkedTransferDeleted);
             if (r2.debtId) { var d = (STATE.data.debts || []).find(function (x) { return x.ID === r2.debtId; }); if (d) d.CurrentBalance = r2.debtBalance; }
           });
           M_TX_SELECTED = {};
@@ -9423,8 +9575,8 @@ function renderMobileTransactions() {
   var ss = document.getElementById('m-tx-stat-savings');  if (ss) ss.textContent = rupiahShort(savings);
 
   // Icon map per group
-  var iconMap = { Income: 'fa-arrow-down', Needs: 'fa-cart-shopping', Wants: 'fa-star', Savings: 'fa-piggy-bank' };
-  var cls     = { Income: 'income', Needs: 'needs', Wants: 'wants', Savings: 'savings' };
+  var iconMap = { Income: 'fa-arrow-down', Needs: 'fa-cart-shopping', Wants: 'fa-star', Savings: 'fa-piggy-bank', Transfer: 'fa-right-left' };
+  var cls     = { Income: 'income', Needs: 'needs', Wants: 'wants', Savings: 'savings', Transfer: 'transfer' };
 
   // Split badge — sama seperti desktop (lihat renderTransactions), dihitung
   // dari SEMUA transaksi tahun ini (bukan cuma `list` yang sudah difilter).
@@ -9448,6 +9600,14 @@ function renderMobileTransactions() {
     var splitBadge = (t.SplitGroupID && splitGroupCounts[t.SplitGroupID] > 1) ?
       '<span class="m-tx-note" style="color:#5b21b6;"><i class="fas fa-layer-group me-1" style="font-size:.55rem;opacity:.8;"></i>Split</span>' : '';
     var isChecked = !!M_TX_SELECTED[t.ID];
+    // Transaksi Transfer Antar Akun: tampilkan arahnya (mis. "→ CIMB NIAGA")
+    // supaya langsung terlihat pasangan akunnya — sama seperti desktop
+    // (lihat renderTransactions/categoryDisplay).
+    var categoryDisplay = escapeHtml(t.Category);
+    if (t.Group === 'Transfer' && t.CounterpartAccount) {
+      var arrow = (t.Category === 'Transfer Masuk') ? '&larr; ' : '&rarr; ';
+      categoryDisplay += ' <span style="color:#94a1b2;font-weight:500;">' + arrow + escapeHtml(t.CounterpartAccount) + '</span>';
+    }
     // Mode Select: checkbox menggantikan tombol Edit/Delete, tap di mana pun
     // pada baris langsung toggle pilih (lebih mudah di layar kecil daripada
     // harus tepat kena kotak kecil).
@@ -9463,7 +9623,7 @@ function renderMobileTransactions() {
       '<div class="m-tx-badge ' + c + '"><i class="fas ' + ico + '"></i></div>' +
       '<div class="m-tx-info">' +
         '<div class="m-tx-info-top">' +
-          '<div class="m-tx-cat">' + escapeHtml(t.Category) + '</div>' +
+          '<div class="m-tx-cat">' + categoryDisplay + '</div>' +
           '<div class="m-tx-amount ' + c + '">' + rupiah(t.Amount) + '</div>' +
         '</div>' +
         '<div class="m-tx-meta">' +
@@ -9490,10 +9650,13 @@ function mDeleteTx(id) {
   if (mGuardArchiveReadOnly()) return;
   var tx = (STATE.data.transactions || []).find(function (t) { return t.ID === id; });
   var isPocketTransfer = tx && tx.PocketTransferID;
+  var isAccountTransfer = tx && tx.Group === 'Transfer';
   mConfirm({
     title: 'Delete transaction?',
     msg: isPocketTransfer ?
       'This Income was created by a Pocket Transfer — deleting it will also reverse the pocket balance it came from.' :
+      isAccountTransfer ?
+      'This will also delete its paired Transfer entry (' + (tx.CounterpartAccount ? 'the matching side in ' + tx.CounterpartAccount : 'the other side') + ').' :
       'This action cannot be undone.',
     icon: 'trash', iconStyle: 'danger',
     okLabel: 'Delete', okStyle: 'danger',
@@ -9505,6 +9668,7 @@ function mDeleteTx(id) {
           if (!res.success) { mToast(res.message, 'error'); return; }
           STATE.data.transactions = STATE.data.transactions.filter(function (t) { return t.ID !== id; });
           applyPocketTransferDeleted(res.pocketTransferDeleted);
+          removeLinkedTransaction(res.linkedTransferDeleted);
           renderMobileTransactions();
           refreshActiveMobileView();
           if (res.pocketTransferDeleted) {
@@ -9532,6 +9696,14 @@ function mEditTransaction(id) {
   if (mGuardArchiveReadOnly()) return;
   var t = (STATE.data.transactions || []).find(function (x) { return x.ID === id; });
   if (!t) return;
+  // Transaksi Transfer Antar Akun tidak boleh diedit lewat sheet generik ini
+  // (lihat guard yang sama di updateTransaction(), Kode.gs & openEditTx()
+  // desktop) — supaya kedua sisi (Keluar/Masuk) tidak pernah bisa "kepisah"
+  // jadi tidak sinkron.
+  if (t.Group === 'Transfer') {
+    mToast('Transfer transactions can\'t be edited — delete this transfer and create a new one instead.', 'info');
+    return;
+  }
   M_EDIT_TX_ID = id;
   var isPocketTransfer = !!t.PocketTransferID;
 
@@ -10770,6 +10942,61 @@ function saveAddSpending(e) {
     .addTransaction(STATE.year, payload);
 }
 
+/* ==================================================================
+ *  TRANSFER ANTAR AKUN (desktop) — halaman penuh tersendiri di sidebar,
+ *  persis di bawah Add Spending. Cukup pilih akun asal, akun tujuan, &
+ *  jumlah — sistem otomatis mencatat sepasang transaksi Transfer Keluar/
+ *  Transfer Masuk yang saling terhubung (lihat addAccountTransfer() di
+ *  Kode.gs). TIDAK mempengaruhi Budgeting maupun Laporan Income/Expense
+ *  sama sekali (Group='Transfer' sengaja dikecualikan dari situ), tapi
+ *  tetap memperbarui saldo per akun (lihat computeAccountBalances()).
+ * ================================================================== */
+function prepareTransferAccountForm() {
+  populateAccountSelect('at-from');
+  populateAccountSelect('at-to');
+  if (!document.getElementById('at-date').value) document.getElementById('at-date').value = todayISO();
+}
+
+function resetTransferAccountForm() {
+  document.getElementById('at-amount').value = '';
+  document.getElementById('at-note').value = '';
+  document.getElementById('at-date').value = todayISO();
+  populateAccountSelect('at-from');
+  populateAccountSelect('at-to');
+}
+
+function saveAccountTransfer(e) {
+  if (mGuardArchiveReadOnly()) return;
+  e.preventDefault();
+  var payload = {
+    date: document.getElementById('at-date').value,
+    fromAccount: document.getElementById('at-from').value,
+    toAccount: document.getElementById('at-to').value,
+    amount: rawNumber(document.getElementById('at-amount')),
+    note: document.getElementById('at-note').value.trim()
+  };
+  if (!payload.date) { Swal.fire('Incomplete', 'Please select a date.', 'warning'); return; }
+  if (!payload.fromAccount || !payload.toAccount) { Swal.fire('Incomplete', 'Please select both accounts. Add one in Setup first.', 'warning'); return; }
+  if (payload.fromAccount === payload.toAccount) { Swal.fire('Incomplete', 'Source and destination account must be different.', 'warning'); return; }
+  if (!payload.amount || payload.amount <= 0) { Swal.fire('Incomplete', 'Please enter a valid amount.', 'warning'); return; }
+
+  showLoad('Saving transfer...');
+  google.script.run
+    .withSuccessHandler(function (res) {
+      hideLoad();
+      if (!res.success) { Swal.fire('Error', res.message, 'error'); return; }
+      var inYear = mAcceptTxYearOrWarn_(res.actualYear);
+      if (inYear) {
+        STATE.data.transactions.push(res.outRecord);
+        STATE.data.transactions.push(res.inRecord);
+        Swal.fire({ icon: 'success', title: 'Transfer saved!', timer: 1400, showConfirmButton: false });
+      }
+      resetTransferAccountForm();
+    })
+    .withFailureHandler(function (err) { hideLoad(); Swal.fire('Error', err.message, 'error'); })
+    .addAccountTransfer(STATE.year, payload);
+}
+
 /* Field "Linked Debt/Loan" hanya relevan untuk transaksi pengeluaran
    kategori "Debt/Installment" — tampil otomatis saat kategori itu dipilih,
    baik di form desktop (Add Spending) maupun mobile. Dipanggil dari onchange
@@ -10843,12 +11070,13 @@ function resetAddSpendingForm() {
 /*  TRANSACTIONS                                                      */
 /* ---------------------------------------------------------------- */
 function groupBadge(group) {
-  var map = { Income: 'badge-income', Needs: 'badge-needs', Wants: 'badge-wants', Savings: 'badge-savings' };
+  var map = { Income: 'badge-income', Needs: 'badge-needs', Wants: 'badge-wants', Savings: 'badge-savings', Transfer: 'badge-transfer' };
   return '<span class="badge-grp ' + (map[group] || '') + '">' + group + '</span>';
 }
 function amountColorClass(group) {
   if (group === 'Income') return 'text-success';
   if (group === 'Savings') return 'text-primary';
+  if (group === 'Transfer') return 'text-muted';
   return 'text-danger';
 }
 
@@ -10908,6 +11136,15 @@ function renderTransactions() {
     tbody.innerHTML = list.map(function (t) {
       var tagBadge = t.Tag ? '<span class="badge-grp" style="background:#ede9fe;color:#5b21b6;margin-left:5px;">' + escapeHtml(t.Tag) + '</span>' : '';
       var splitBadge = (t.SplitGroupID && splitGroupCounts[t.SplitGroupID] > 1) ? '<span class="badge-split" title="Part of a split entry"><i class="fas fa-layer-group"></i> Split</span>' : '';
+      // Transaksi Transfer Antar Akun: tampilkan arahnya (mis. "→ CIMB NIAGA"
+      // untuk sisi Keluar, "← BRI" untuk sisi Masuk) supaya langsung terlihat
+      // pasangan akunnya tanpa perlu buka detail (lihat CounterpartAccount
+      // di addAccountTransfer(), Kode.gs).
+      var categoryDisplay = escapeHtml(t.Category);
+      if (t.Group === 'Transfer' && t.CounterpartAccount) {
+        var arrow = (t.Category === 'Transfer Masuk') ? '&larr; ' : '&rarr; ';
+        categoryDisplay += ' <span class="text-muted small">' + arrow + escapeHtml(t.CounterpartAccount) + '</span>';
+      }
       var checked = TRX_SELECTED[t.ID] ? ' checked' : '';
       var checkCell = TRX_SELECT_MODE ?
         '<td class="text-center"><input type="checkbox" class="trx-row-check" data-id="' + t.ID + '"' + checked + ' onchange="toggleTxSelect(\'' + t.ID + '\',this.checked)"></td>' : '';
@@ -10915,7 +11152,7 @@ function renderTransactions() {
         checkCell +
         '<td>' + formatDateDisplay(t.Date) + '</td>' +
         '<td>' + groupBadge(t.Group) + '</td>' +
-        '<td>' + escapeHtml(t.Category) + splitBadge + '</td>' +
+        '<td>' + categoryDisplay + splitBadge + '</td>' +
         '<td>' + escapeHtml(t.Account) + '</td>' +
         '<td class="text-end fw-bold ' + amountColorClass(t.Group) + '">' + rupiah(t.Amount) + '</td>' +
         '<td style="color:#94a3b8;font-size:.82rem;word-break:break-word;line-height:1.45;">' + (escapeHtml(t.Note)||'—') + tagBadge + '</td>' +
@@ -11041,6 +11278,7 @@ function bulkDeleteTx() {
           STATE.data.transactions = STATE.data.transactions.filter(function (t) { return t.ID !== r2.id; });
           applySavingsBalance(r2.savingsCategory, r2.savingsBalance);
           applyPocketTransferDeleted(r2.pocketTransferDeleted);
+          removeLinkedTransaction(r2.linkedTransferDeleted);
           if (r2.debtId) { var d = (STATE.data.debts || []).find(function (x) { return x.ID === r2.debtId; }); if (d) d.CurrentBalance = r2.debtBalance; }
         });
         clearTxSelection();
@@ -11089,6 +11327,13 @@ function bulkSetTagTx() {
 function openEditTx(id) {
   var t = STATE.data.transactions.find(function (x) { return x.ID === id; });
   if (!t) return;
+  // Transaksi Transfer Antar Akun tidak boleh diedit lewat modal generik ini
+  // (lihat guard yang sama di updateTransaction(), Kode.gs) — supaya kedua
+  // sisi (Keluar/Masuk) tidak pernah bisa "kepisah" jadi tidak sinkron.
+  if (t.Group === 'Transfer') {
+    mToastOrSwal_('Transfer transactions can\'t be edited — delete this transfer and create a new one instead.', 'info');
+    return;
+  }
   STATE.editTxId = id;
   document.getElementById('et-date').value = t.Date;
   populateAccountSelect('et-account');
@@ -11176,9 +11421,11 @@ function confirmDeleteTx(id) {
   if (mGuardArchiveReadOnly()) return;
   var tx = (STATE.data.transactions || []).find(function (t) { return t.ID === id; });
   var isPocketTransfer = tx && tx.PocketTransferID;
+  var isAccountTransfer = tx && tx.Group === 'Transfer';
   Swal.fire({
     title: 'Delete this transaction?',
-    text: isPocketTransfer ? 'This Income was created by a Pocket Transfer — deleting it will also reverse the pocket balance it came from.' : undefined,
+    text: isPocketTransfer ? 'This Income was created by a Pocket Transfer — deleting it will also reverse the pocket balance it came from.' :
+      isAccountTransfer ? 'This will also delete its paired Transfer entry (' + (tx.CounterpartAccount ? 'the matching side in ' + tx.CounterpartAccount : 'the other side') + ').' : undefined,
     icon: 'warning', showCancelButton: true, confirmButtonText: 'Delete', confirmButtonColor: '#dc2626'
   })
     .then(function (r) {
@@ -11191,6 +11438,7 @@ function confirmDeleteTx(id) {
           STATE.data.transactions = STATE.data.transactions.filter(function (x) { return x.ID !== id; });
           applySavingsBalance(res.savingsCategory, res.savingsBalance);
           applyPocketTransferDeleted(res.pocketTransferDeleted);
+          removeLinkedTransaction(res.linkedTransferDeleted);
           renderCurrentView();
           if (res.pocketTransferDeleted) {
             if (typeof renderGeneralSavings === 'function') renderGeneralSavings();
@@ -14758,7 +15006,7 @@ function saveChangePassword(e) {
 /* ==================================================================== */
 
 var M_SETUP_LABELS = {
-  account: { title: 'Account', icon: 'fa-building-columns', hint: 'Manage your bank/e-wallet accounts. Used in Add Spending, Budgeting, and Wealth Management.', placeholder: 'New account name, e.g. Jago' },
+  account: { title: 'Account', icon: 'fa-building-columns', hint: 'Manage your bank/e-wallet accounts. Used in Add Spending, Transfer Account, Budgeting, and Wealth Management.', placeholder: 'New account name, e.g. Jago' },
   income:  { title: 'Income Sources', icon: 'fa-sack-dollar', hint: 'Manage income source categories, used for Budgeting and Add Income.', placeholder: 'New income source, e.g. Bonus' },
   needs:   { title: 'Needs', icon: 'fa-cart-shopping', hint: 'Manage "Needs" categories — essential expenses.', placeholder: 'New Needs category, e.g. Internet' },
   wants:   { title: 'Wants', icon: 'fa-star', hint: 'Manage "Wants" categories — discretionary/lifestyle expenses.', placeholder: 'New Wants category, e.g. Subscriptions' },
