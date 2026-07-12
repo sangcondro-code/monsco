@@ -2804,6 +2804,27 @@
             </table>
           </div>
         </div></div>
+
+        <div class="card mt-3"><div class="card-body">
+          <h6 class="mb-3"><i class="fas fa-folder-tree me-1"></i>Archive Files</h6>
+          <div id="archive-files-body">
+            <div class="text-center text-muted py-2"><i class="fas fa-spinner fa-spin me-2"></i>Loading...</div>
+          </div>
+        </div></div>
+
+        <div class="card mt-3"><div class="card-body">
+          <h6 class="mb-3"><i class="fas fa-chart-simple me-1"></i>Storage Usage</h6>
+          <div id="quota-status-body">
+            <div class="text-center text-muted py-2"><i class="fas fa-spinner fa-spin me-2"></i>Loading...</div>
+          </div>
+        </div></div>
+
+        <div class="card mt-3"><div class="card-body">
+          <h6 class="mb-3"><i class="fas fa-broom me-1"></i>Maintenance</h6>
+          <div id="maintenance-status-body">
+            <div class="text-center text-muted py-2"><i class="fas fa-spinner fa-spin me-2"></i>Loading...</div>
+          </div>
+        </div></div>
       </div>
 
     </div>
@@ -14688,6 +14709,9 @@ function renderArchivePanel() {
   var tbody = document.getElementById('archive-year-tbody');
   if (!tbody) return;
   tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted py-3"><i class="fas fa-spinner fa-spin me-2"></i>Loading...</td></tr>';
+  renderQuotaStatus_('quota-status-body');
+  renderMaintenanceStatus_('maintenance-status-body');
+  renderArchiveFilesList_('archive-files-body');
   google.script.run
     .withSuccessHandler(function (res) {
       if (!res.success) { tbody.innerHTML = '<tr><td colspan="3" class="text-danger text-center py-3">' + (res.message || 'Failed to load.') + '</td></tr>'; return; }
@@ -14771,6 +14795,131 @@ function mUnarchiveYearConfirm(year) {
   });
 }
 
+/* ---- Storage quota & maintenance (dipakai bareng desktop & mobile) ----
+   Batas Google Sheets: 10 juta sel GABUNGAN semua tab per file, bukan per
+   tab dan bukan batas jumlah tab. Bagian ini murni pelaporan (quota) plus
+   2 aksi manual (arsip debt lunas / recurring nonaktif) — lihat catatan
+   di Kode.gs bagian "MAINTENANCE TAMBAHAN". ---- */
+function quotaBarHtml_(label, cells, limit, percent) {
+  if (cells == null) return '<div class="small text-muted mb-2">' + label + ': not available.</div>';
+  var barColor = percent >= 70 ? '#dc2626' : (percent >= 40 ? '#b45309' : '#15803d');
+  return '' +
+    '<div class="mb-2">' +
+      '<div class="d-flex justify-content-between small mb-1"><span>' + label + '</span><span>' + cells.toLocaleString() + ' / ' + limit.toLocaleString() + ' cells (' + percent + '%)</span></div>' +
+      '<div style="height:8px;border-radius:4px;background:#e9ecef;overflow:hidden;">' +
+        '<div style="height:100%;width:' + Math.min(100, percent) + '%;background:' + barColor + ';"></div>' +
+      '</div>' +
+    '</div>';
+}
+
+function renderQuotaStatus_(containerId) {
+  var el = document.getElementById(containerId);
+  if (!el) return;
+  google.script.run
+    .withSuccessHandler(function (res) {
+      if (!res.success) { el.innerHTML = '<div class="text-danger small">' + (res.message || 'Failed to load.') + '</div>'; return; }
+      var html = quotaBarHtml_('Main file', res.mainCells, res.mainLimit, res.mainPercent);
+      (res.archiveFiles || []).forEach(function (af) {
+        html += quotaBarHtml_(af.label, af.cells, af.limit, af.percent);
+      });
+      el.innerHTML = html;
+    })
+    .withFailureHandler(function (err) { el.innerHTML = '<div class="text-danger small">' + (err.message || 'Failed to load.') + '</div>'; })
+    .getStorageQuotaStatus();
+}
+
+function renderMaintenanceStatus_(containerId) {
+  var el = document.getElementById(containerId);
+  if (!el) return;
+  google.script.run
+    .withSuccessHandler(function (res) {
+      if (!res.success) { el.innerHTML = '<div class="text-danger small">' + (res.message || 'Failed to load.') + '</div>'; return; }
+      el.innerHTML =
+        '<div class="d-flex justify-content-between align-items-center mb-2">' +
+          '<div class="small">Paid-off debts ready to archive: <b>' + res.paidDebtCount + '</b></div>' +
+          (res.paidDebtCount > 0
+            ? '<button class="btn btn-sm btn-outline-danger" onclick="mArchivePaidDebtsConfirm()"><i class="fas fa-archive me-1"></i>Archive</button>'
+            : '<span class="text-muted small">Nothing to archive</span>') +
+        '</div>' +
+        '<div class="d-flex justify-content-between align-items-center">' +
+          '<div class="small">Inactive recurring ready to archive: <b>' + res.inactiveRecurringCount + '</b></div>' +
+          (res.inactiveRecurringCount > 0
+            ? '<button class="btn btn-sm btn-outline-danger" onclick="mArchiveInactiveRecurringConfirm()"><i class="fas fa-archive me-1"></i>Archive</button>'
+            : '<span class="text-muted small">Nothing to archive</span>') +
+        '</div>';
+    })
+    .withFailureHandler(function (err) { el.innerHTML = '<div class="text-danger small">' + (err.message || 'Failed to load.') + '</div>'; })
+    .getMaintenanceStatus();
+}
+
+function renderArchiveFilesList_(containerId) {
+  var el = document.getElementById(containerId);
+  if (!el) return;
+  google.script.run
+    .withSuccessHandler(function (res) {
+      if (!res.success) { el.innerHTML = '<div class="text-danger small">' + (res.message || 'Failed to load.') + '</div>'; return; }
+      if (!res.files.length) { el.innerHTML = '<div class="text-muted small">No archive files yet — created automatically the first time a year is archived.</div>'; return; }
+      el.innerHTML = res.files.map(function (f) {
+        var nameHtml = f.url
+          ? '<a href="' + f.url + '" target="_blank" rel="noopener">' + f.name + '</a>'
+          : f.name;
+        return '<div class="d-flex justify-content-between align-items-center small mb-1">' +
+          '<span>' + f.decade + 's</span><span>' + nameHtml + '</span>' +
+        '</div>';
+      }).join('');
+    })
+    .withFailureHandler(function (err) { el.innerHTML = '<div class="text-danger small">' + (err.message || 'Failed to load.') + '</div>'; })
+    .getArchiveFilesStatus();
+}
+
+function mArchivePaidDebtsConfirm() {
+  mConfirm({
+    title: 'Archive paid-off debts?',
+    msg: 'Debts with a current balance of 0 will be moved to the Archive Spreadsheet (DEBT_ARCHIVE). They will no longer appear in your active debt list.',
+    okLabel: 'Yes, Archive', okStyle: 'danger', icon: 'box-archive', iconStyle: 'danger',
+    onOk: function () {
+      showLoad('Archiving paid-off debts...');
+      google.script.run
+        .withSuccessHandler(function (res) {
+          hideLoad();
+          if (!res.success) { mToast(res.message || 'Failed to archive.', 'error'); return; }
+          mToast(res.archived + ' debt(s) archived.', 'success');
+          renderMaintenanceStatus_('maintenance-status-body');
+          renderMaintenanceStatus_('maintenance-status-body-m');
+          renderQuotaStatus_('quota-status-body');
+          renderQuotaStatus_('quota-status-body-m');
+          loadDataForYear(STATE.year);
+        })
+        .withFailureHandler(function (err) { hideLoad(); mToast(err.message || 'Failed to archive.', 'error'); })
+        .archivePaidDebts();
+    }
+  });
+}
+
+function mArchiveInactiveRecurringConfirm() {
+  mConfirm({
+    title: 'Archive inactive recurring?',
+    msg: 'Recurring items that are inactive and whose end date has passed for a while will be moved to the Archive Spreadsheet (RECURRING_ARCHIVE).',
+    okLabel: 'Yes, Archive', okStyle: 'danger', icon: 'box-archive', iconStyle: 'danger',
+    onOk: function () {
+      showLoad('Archiving inactive recurring...');
+      google.script.run
+        .withSuccessHandler(function (res) {
+          hideLoad();
+          if (!res.success) { mToast(res.message || 'Failed to archive.', 'error'); return; }
+          mToast(res.archived + ' recurring item(s) archived.', 'success');
+          renderMaintenanceStatus_('maintenance-status-body');
+          renderMaintenanceStatus_('maintenance-status-body-m');
+          renderQuotaStatus_('quota-status-body');
+          renderQuotaStatus_('quota-status-body-m');
+          loadDataForYear(STATE.year);
+        })
+        .withFailureHandler(function (err) { hideLoad(); mToast(err.message || 'Failed to archive.', 'error'); })
+        .archiveInactiveRecurring();
+    }
+  });
+}
+
 /* ---- Versi MOBILE dari panel arsip — dibuka sebagai bottom sheet (m-sheet),
    bukan tab Setup desktop. Pakai endpoint server yang sama (getArchiveStatus,
    archiveYear, unarchiveYear), cuma beda gaya render (m-sec-view-row). ---- */
@@ -14810,7 +14959,19 @@ function mRenderArchiveSheet() {
             '<div><div class="m-sec-view-label">Year</div><div class="m-sec-view-value">' + r.year + ' ' + statusHtml + '</div></div>' +
             actionHtml +
           '</div>';
-        }).join('');
+        }).join('') +
+        '<hr class="my-3">' +
+        '<hr class="my-3">' +
+        '<div class="fw-bold small mb-2"><i class="fas fa-folder-tree me-1"></i>Archive Files</div>' +
+        '<div id="archive-files-body-m" class="mb-3"><div class="text-center text-muted py-2"><i class="fas fa-spinner fa-spin me-2"></i>Loading...</div></div>' +
+        '<div class="fw-bold small mb-2"><i class="fas fa-chart-simple me-1"></i>Storage Usage</div>' +
+        '<div id="quota-status-body-m" class="mb-3"><div class="text-center text-muted py-2"><i class="fas fa-spinner fa-spin me-2"></i>Loading...</div></div>' +
+        '<div class="fw-bold small mb-2"><i class="fas fa-broom me-1"></i>Maintenance</div>' +
+        '<div id="maintenance-status-body-m"><div class="text-center text-muted py-2"><i class="fas fa-spinner fa-spin me-2"></i>Loading...</div></div>';
+
+      renderArchiveFilesList_('archive-files-body-m');
+      renderQuotaStatus_('quota-status-body-m');
+      renderMaintenanceStatus_('maintenance-status-body-m');
     })
     .withFailureHandler(function (err) {
       body.innerHTML = '<div class="text-danger text-center py-4">' + (err.message || 'Failed to load.') + '</div>';
