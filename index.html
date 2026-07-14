@@ -9219,6 +9219,20 @@ function renderMobileDebt() {
   setText('m-debt-total-outstanding', rupiahShort(totalOutstanding));
   setText('m-debt-total-minpayment', rupiahShort(totalMinPayment));
 
+  // BUG FIX: dulu panggilan renderMobileCredit() ada di PALING BAWAH fungsi
+  // ini, SETELAH percabangan "if (!list.length) { ...; return; }" di bawah —
+  // artinya kalau user belum punya record Debt & Loan SAMA SEKALI (list
+  // kosong), fungsi ini return lebih dulu dan renderMobileCredit() TIDAK
+  // PERNAH terpanggil, walau Credit Card/Paylater-nya sendiri sudah ada.
+  // Itu sebabnya section Credit Card/Paylater kelihatan kosong di HP padahal
+  // sudah ada datanya. Dipindah ke sini (paling atas, sebelum satu pun
+  // percabangan/return di bawah) supaya SELALU jalan apa pun isi Debt &
+  // Loan-nya — dua section ini sebenarnya tidak saling bergantung sama
+  // sekali, jadi tidak seharusnya satu bisa "memblokir" yang lain seperti
+  // ini. renderDebt() versi desktop TIDAK kena bug yang sama karena strukturnya
+  // if/else (tidak pernah return di tengah), bukan early-return seperti ini.
+  if (typeof renderMobileCredit === 'function') renderMobileCredit();
+
   var wrap = document.getElementById('m-debt-list');
   if (!wrap) return;
   if (!list.length) {
@@ -9246,13 +9260,6 @@ function renderMobileDebt() {
         '</div>' +
       '</div>';
   }).join('');
-
-  // Section Credit Card/Paylater ada di halaman yang sama (Wealth), jadi
-  // disegarkan bareng di sini — supaya SEMUA call site renderMobileDebt()
-  // yang sudah ada (pembayaran, tambah/edit/hapus debt, dst) otomatis ikut
-  // menyegarkan kartu kredit juga, tanpa perlu menyisipkan pemanggilan baru
-  // di 10 tempat terpisah (rawan kelewat satu).
-  if (typeof renderMobileCredit === 'function') renderMobileCredit();
 }
 
 var M_ADD_GROUP = 'Needs';
