@@ -84,22 +84,21 @@
        shadeColor_() di JS supaya SELALU kaya/kontras, tidak pernah pastel
        apa pun warna dasarnya — itulah kenapa "mati"-nya kartu sebelumnya
        diperbaiki di sini, bukan dengan mengganti pilihan warna user. */
-    .credit-premium-card { position:relative; border-radius:1rem; padding:1.15rem 1.25rem; display:flex; flex-direction:column; gap:.5rem; overflow:hidden; color:#fff; box-shadow:0 12px 26px rgba(0,0,0,.22); }
+    .credit-premium-card { position:relative; border-radius:.75rem; padding:1.15rem 1.25rem; display:flex; flex-direction:column; gap:.5rem; overflow:hidden; color:#fff; box-shadow:0 12px 26px rgba(0,0,0,.22); }
     .credit-premium-card::before { content:''; position:absolute; top:-45%; right:-15%; width:65%; height:190%; background:rgba(255,255,255,.08); transform:rotate(20deg); pointer-events:none; }
     .credit-premium-card::after { content:''; position:absolute; inset:0; background:linear-gradient(180deg, rgba(255,255,255,.12) 0%, rgba(255,255,255,0) 40%); pointer-events:none; }
     .credit-premium-card.is-closed { filter:grayscale(.6); opacity:.72; }
     .credit-card-top { position:relative; z-index:1; display:flex; justify-content:space-between; align-items:flex-start; }
-    .credit-card-chip { width:32px; height:24px; border-radius:5px; background:linear-gradient(135deg,#f5d78e,#c99a3f); box-shadow:inset 0 0 0 1px rgba(0,0,0,.15); margin-bottom:.5rem; }
     .credit-card-pill { font-size:.66rem; padding:3px 10px; border-radius:20px; font-weight:700; background:rgba(255,255,255,.22); color:#fff; white-space:nowrap; letter-spacing:.02em; }
-    .credit-card-name { position:relative; z-index:1; font-weight:800; font-size:1.02rem; letter-spacing:.01em; }
+    .credit-card-name { position:relative; z-index:1; font-weight:700; font-size:1.02rem; letter-spacing:.01em; }
     .credit-card-lender { position:relative; z-index:1; font-size:.74rem; color:rgba(255,255,255,.75); }
-    .credit-card-balance { position:relative; z-index:1; font-weight:800; font-size:1.4rem; letter-spacing:.01em; margin-top:.15rem; }
+    .credit-card-balance { position:relative; z-index:1; font-weight:700; font-size:1.4rem; letter-spacing:.01em; margin-top:.15rem; }
     .credit-card-limit { font-size:.72rem; color:rgba(255,255,255,.8); font-weight:600; }
     .credit-card-due { position:relative; z-index:1; font-size:.72rem; color:rgba(255,255,255,.7); }
     .credit-card-actions { position:relative; z-index:1; display:flex; gap:.5rem; margin-top:.4rem; }
-    .credit-card-pay-btn { flex:1; border:none; border-radius:.6rem; padding:.5rem .75rem; font-weight:800; font-size:.82rem; background:rgba(255,255,255,.96); }
+    .credit-card-pay-btn { flex:1; border:none; border-radius:.5rem; padding:.5rem .75rem; font-weight:700; font-size:.82rem; background:rgba(255,255,255,.96); }
     .credit-card-pay-btn:disabled { opacity:.45; }
-    .credit-card-icon-btn { width:34px; height:34px; border-radius:.6rem; border:none; background:rgba(255,255,255,.18); color:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .credit-card-icon-btn { width:30px; height:30px; border-radius:.5rem; font-size:.78rem; border:none; background:rgba(255,255,255,.18); color:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
     .credit-card-icon-btn.danger { color:#fecaca; }
     .credit-card-icon-btn.danger:hover { background:rgba(220,38,38,.4); color:#fff; }
 
@@ -9286,6 +9285,23 @@ function shadeColor_(hex, percent) {
  * creditAccountList_/buildFireResultsHtml_. payActionAttr dibiarkan sebagai
  * parameter (nama fungsi onclick beda antar platform: mPayCreditAccount vs
  * payCreditAccountDesktop, dst) supaya tidak perlu 2 salinan HTML terpisah. */
+/* Kartu yang "Ditutup" defaultnya BENAR-BENAR disembunyikan (bukan
+ * ditampilkan pudar terus-terusan) — biar section-nya bersih. Muncul lagi
+ * kalau user sengaja menekan tombol toggle di bawah. Satu flag dipakai
+ * bersama desktop & mobile (konsisten dgn pola CREDIT_EDIT_ID/DEBT_EDIT_ID
+ * di file ini — cuma satu platform yang aktif dilihat dalam satu sesi). */
+var CREDIT_SHOW_CLOSED_ = false;
+function toggleClosedCreditCards_() {
+  CREDIT_SHOW_CLOSED_ = !CREDIT_SHOW_CLOSED_;
+  if (typeof renderMobileCredit === 'function') renderMobileCredit();
+  if (typeof renderCredit === 'function') renderCredit();
+}
+function closedCreditToggleHtml_(count) {
+  return '<button type="button" class="btn btn-sm btn-light border text-muted w-100 mb-2" onclick="toggleClosedCreditCards_()">' +
+    '<i class="fas fa-' + (CREDIT_SHOW_CLOSED_ ? 'eye-slash' : 'eye') + ' me-1"></i>' +
+    (CREDIT_SHOW_CLOSED_ ? 'Sembunyikan' : 'Tampilkan') + ' kartu ditutup (' + count + ')</button>';
+}
+
 function creditCardHtml_(a, bal, closedCard, actions) {
   var limit = Number(a.Limit) || 0;
   var color = a.Color || '#6b7280';
@@ -9296,7 +9312,6 @@ function creditCardHtml_(a, bal, closedCard, actions) {
     '<div class="credit-premium-card' + (closedCard ? ' is-closed' : '') + '" style="background:linear-gradient(135deg,' + dark1 + ' 0%,' + dark2 + ' 100%);">' +
       '<div class="credit-card-top">' +
         '<div>' +
-          '<div class="credit-card-chip"></div>' +
           '<div class="credit-card-name">' + escapeHtml(a.Name) + '</div>' +
           '<div class="credit-card-lender">' + escapeHtml(a.Lender || '—') + '</div>' +
         '</div>' +
@@ -9343,7 +9358,7 @@ function renderMobileCredit() {
   }
 
   wrap.innerHTML = active.map(function (a) { return cardHtml(a, false); }).join('') +
-    (closed.length ? '<div class="text-muted small fw-bold mt-3 mb-1">KARTU DITUTUP</div>' + closed.map(function (a) { return cardHtml(a, true); }).join('') : '');
+    (closed.length ? closedCreditToggleHtml_(closed.length) + (CREDIT_SHOW_CLOSED_ ? closed.map(function (a) { return cardHtml(a, true); }).join('') : '') : '');
 }
 
 /* Hapus permanen — backend (deleteCreditAccount) MENOLAK kalau kartu ini
@@ -12857,7 +12872,7 @@ function renderCredit() {
   }
 
   wrap.innerHTML = active.map(function (a) { return cardHtml(a, false); }).join('') +
-    (closed.length ? '<div class="col-12 text-muted small fw-bold mt-2 mb-1">KARTU DITUTUP</div>' + closed.map(function (a) { return cardHtml(a, true); }).join('') : '');
+    (closed.length ? '<div class="col-12">' + closedCreditToggleHtml_(closed.length) + '</div>' + (CREDIT_SHOW_CLOSED_ ? closed.map(function (a) { return cardHtml(a, true); }).join('') : '') : '');
 }
 
 /* Hapus permanen (desktop) — backend menolak kalau kartu sudah pernah
