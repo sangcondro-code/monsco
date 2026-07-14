@@ -78,6 +78,31 @@
     .debt-progress-fill { height:100%; border-radius:5px; background:#dc2626; transition:.3s; }
     .badge-debttype { font-size:.68rem; padding:2px 8px; border-radius:4px; font-weight:700; background:#fee2e2; color:#991b1b; white-space:nowrap; }
 
+    /* Credit Card / Paylater — kartu premium solid (gradient gelap DIAMBIL
+       dari warna yang user pilih, bukan kartu putih + border tipis warna
+       pudar). Hue tetap sesuai pilihan user, tapi lightness dikontrol lewat
+       shadeColor_() di JS supaya SELALU kaya/kontras, tidak pernah pastel
+       apa pun warna dasarnya — itulah kenapa "mati"-nya kartu sebelumnya
+       diperbaiki di sini, bukan dengan mengganti pilihan warna user. */
+    .credit-premium-card { position:relative; border-radius:1rem; padding:1.15rem 1.25rem; display:flex; flex-direction:column; gap:.5rem; overflow:hidden; color:#fff; box-shadow:0 12px 26px rgba(0,0,0,.22); }
+    .credit-premium-card::before { content:''; position:absolute; top:-45%; right:-15%; width:65%; height:190%; background:rgba(255,255,255,.08); transform:rotate(20deg); pointer-events:none; }
+    .credit-premium-card::after { content:''; position:absolute; inset:0; background:linear-gradient(180deg, rgba(255,255,255,.12) 0%, rgba(255,255,255,0) 40%); pointer-events:none; }
+    .credit-premium-card.is-closed { filter:grayscale(.6); opacity:.72; }
+    .credit-card-top { position:relative; z-index:1; display:flex; justify-content:space-between; align-items:flex-start; }
+    .credit-card-chip { width:32px; height:24px; border-radius:5px; background:linear-gradient(135deg,#f5d78e,#c99a3f); box-shadow:inset 0 0 0 1px rgba(0,0,0,.15); margin-bottom:.5rem; }
+    .credit-card-pill { font-size:.66rem; padding:3px 10px; border-radius:20px; font-weight:700; background:rgba(255,255,255,.22); color:#fff; white-space:nowrap; letter-spacing:.02em; }
+    .credit-card-name { position:relative; z-index:1; font-weight:800; font-size:1.02rem; letter-spacing:.01em; }
+    .credit-card-lender { position:relative; z-index:1; font-size:.74rem; color:rgba(255,255,255,.75); }
+    .credit-card-balance { position:relative; z-index:1; font-weight:800; font-size:1.4rem; letter-spacing:.01em; margin-top:.15rem; }
+    .credit-card-limit { font-size:.72rem; color:rgba(255,255,255,.8); font-weight:600; }
+    .credit-card-due { position:relative; z-index:1; font-size:.72rem; color:rgba(255,255,255,.7); }
+    .credit-card-actions { position:relative; z-index:1; display:flex; gap:.5rem; margin-top:.4rem; }
+    .credit-card-pay-btn { flex:1; border:none; border-radius:.6rem; padding:.5rem .75rem; font-weight:800; font-size:.82rem; background:rgba(255,255,255,.96); }
+    .credit-card-pay-btn:disabled { opacity:.45; }
+    .credit-card-icon-btn { width:34px; height:34px; border-radius:.6rem; border:none; background:rgba(255,255,255,.18); color:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .credit-card-icon-btn.danger { color:#fecaca; }
+    .credit-card-icon-btn.danger:hover { background:rgba(220,38,38,.4); color:#fff; }
+
     /* Goal progress (Savings) */
     .goal-progress-wrap { display:flex; flex-direction:column; gap:3px; min-width:120px; }
     .goal-progress-bar { height:6px; border-radius:5px; background:#e2e8f0; overflow:hidden; }
@@ -2531,6 +2556,19 @@
           <div id="debt-cards-wrap" class="row g-3"></div>
         </div>
       </div>
+
+      <!-- Credit Card / Paylater — akun berbasis kredit, TERPISAH dari record
+           Debt & Loan biasa di atas (sub-judul sendiri, sesuai kesepakatan).
+           Baris datanya ada di Setup_Account, BUKAN sheet DEBT. -->
+      <div class="card wm-card mb-4">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <div class="section-title mb-0"><i class="fas fa-credit-card"></i>Credit Card/Paylater</div>
+            <button type="button" class="bud-toolbar-btn solid" onclick="openAddCreditModal()"><i class="fas fa-plus"></i>Add Credit Card/Paylater</button>
+          </div>
+          <div id="credit-cards-wrap" class="row g-3"></div>
+        </div>
+      </div>
     </div>
 
     <div id="view-setup" class="view d-none">
@@ -3056,14 +3094,15 @@
           <div class="col-md-6">
             <label class="form-label fw-bold small">Type</label>
             <select class="form-select" id="dm-type">
-              <option value="Credit Card">Credit Card</option>
               <option value="Mortgage/KPR">Mortgage/KPR</option>
               <option value="Personal Loan">Personal Loan</option>
               <option value="Online Loan (Pinjol)">Online Loan (Pinjol)</option>
               <option value="Vehicle Loan">Vehicle Loan</option>
               <option value="Receivable">Receivable (owed to me)</option>
               <option value="Other">Other</option>
+              <option value="Credit Card">Credit Card (old entry)</option>
             </select>
+            <div class="text-muted small mt-1"><i class="fas fa-circle-info me-1"></i>Adding a NEW Credit Card or Paylater? Use the "Credit Card/Paylater" section below instead.</div>
           </div>
           <div class="col-md-6">
             <label class="form-label fw-bold small">Lender / Counterparty <span class="text-muted fw-normal">(optional)</span></label>
@@ -3098,6 +3137,69 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancel</button>
         <button type="button" class="btn text-white fw-bold" style="background:var(--brand);" onclick="saveDebt()"><i class="fas fa-save me-1"></i>Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- MODAL: ADD/EDIT CREDIT CARD / PAYLATER                        -->
+<!-- ============================================================ -->
+<div class="modal fade" id="modal-credit" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header" style="background:var(--brand);color:white;">
+        <h6 class="modal-title fw-bold" id="credit-modal-title"><i class="fas fa-credit-card me-2"></i>Add Credit Card/Paylater</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label fw-bold small">Name</label>
+            <input type="text" class="form-control" id="cm-name" placeholder="e.g. CC CIMB Niaga">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold small">Type</label>
+            <select class="form-select" id="cm-type">
+              <option value="Credit Card">Credit Card</option>
+              <option value="Paylater">Paylater</option>
+            </select>
+          </div>
+          <div class="col-12" id="cm-name-locked-hint" style="display:none;">
+            <div class="text-muted small"><i class="fas fa-circle-info me-1"></i>Name and Type can't be changed once created — old transactions still refer to this exact name.</div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold small">Lender / Provider <span class="text-muted fw-normal">(optional)</span></label>
+            <input type="text" class="form-control" id="cm-lender" placeholder="e.g. CIMB Niaga" oninput="autoSuggestCreditColor()">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold small">Color</label>
+            <input type="color" class="form-control form-control-color" id="cm-color" value="#6b7280" style="width:100%;">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold small">Limit (Rp)</label>
+            <input type="text" class="form-control input-rp" id="cm-limit" placeholder="0" inputmode="numeric" oninput="bindRupiahInputEvent(this)">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold small">Due Date <span class="text-muted fw-normal">(optional)</span></label>
+            <input type="text" class="form-control" id="cm-duedate" placeholder="e.g. 25">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold small">Interest Rate (%/yr) <span class="text-muted fw-normal">(optional)</span></label>
+            <input type="text" class="form-control" id="cm-rate" placeholder="0" inputmode="decimal">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold small">Min. Payment (Rp) <span class="text-muted fw-normal">(optional)</span></label>
+            <input type="text" class="form-control input-rp" id="cm-minpayment" placeholder="0" inputmode="numeric" oninput="bindRupiahInputEvent(this)">
+          </div>
+          <div class="col-12">
+            <div class="text-muted small"><i class="fas fa-circle-info me-1"></i>Starts at Rp0 — history before today is not tracked. Once saved, this shows up as a normal Account option when adding a spending.</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn text-white fw-bold" style="background:var(--brand);" onclick="saveCreditModal()"><i class="fas fa-save me-1"></i>Save</button>
       </div>
     </div>
   </div>
@@ -3940,6 +4042,16 @@
         </div>
         <div id="m-debt-list"></div>
       </div>
+
+      <div class="m-section">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="m-section-title mb-0">Credit Card/Paylater</div>
+          <div class="d-flex gap-2">
+            <button type="button" class="m-pill-btn" onclick="mOpenAddCreditSheet()"><i class="fas fa-plus"></i>Add</button>
+          </div>
+        </div>
+        <div id="m-credit-list"></div>
+      </div>
     </div>
 
     <!-- FIRE CALCULATOR (dedicated page, accessed from Wealth) -->
@@ -3960,7 +4072,7 @@
       <p class="m-sheet-hint"><i class="fas fa-circle-info me-1"></i>Estimated balance per account, calculated from this year's recorded transactions and pocket activity.</p>
 
       <div class="m-balance-card">
-        <div class="m-balance-label">Total Across Accounts<span class="m-balance-sub">All bank &amp; e-wallet accounts</span></div>
+        <div class="m-balance-label">Total Cash &amp; Bank<span class="m-balance-sub">Bank &amp; cash accounts only</span></div>
         <div class="m-balance-amount" id="m-bk-total">Rp 0</div>
       </div>
 
@@ -8132,7 +8244,15 @@ function mDeleteStockMobile(id) {
 function computeAccountBalances() {
   var accounts = STATE.data.setup.account || [];
   var balances = {};
-  accounts.forEach(function (a) { balances[a.Name] = 0; });
+  // typeOf: 'Bank' (default — mencakup akun lama yang Type-nya kosong) atau
+  // 'Credit Card'/'Paylater'. Dipakai utk memisahkan tampilan/total, BUKAN
+  // utk mengubah cara saldo dihitung (rumus di bawah tetap generik & sama
+  // persis utk semua jenis akun — lihat catatan fitur Credit Card/Paylater).
+  var typeOf = {};
+  accounts.forEach(function (a) {
+    balances[a.Name] = 0;
+    typeOf[a.Name] = (a.Type === 'Credit Card' || a.Type === 'Paylater') ? a.Type : 'Bank';
+  });
 
   (STATE.data.transactions || []).forEach(function (t) {
     if (!(t.Account in balances)) balances[t.Account] = balances[t.Account] || 0;
@@ -8148,6 +8268,13 @@ function computeAccountBalances() {
     // uang KELUAR dari akun ini (-). 'Transfer Masuk' juga tetap dicek di
     // sini (nama lama sebelum kategori ini diubah ke bahasa Inggris) supaya
     // transfer yang sudah sempat tercatat sebelumnya tetap terhitung benar.
+    // CATATAN fitur Credit Card/Paylater: belanja pakai akun Type Credit
+    // Card/Paylater otomatis MASUK default "else -1" di bawah (sama seperti
+    // akun bank) — inilah yang bikin saldo akun kartu itu jadi minus (tanda
+    // "masih harus dibayar"). Bayar tagihannya = Transfer dari akun bank ke
+    // akun kartu ini (sign +1 di sisi kartu), sama seperti transfer biasa.
+    // TIDAK ADA percabangan baru di sini — sengaja, sesuai desain yang sudah
+    // disepakati (lihat komentar di addCreditAccount/Kode.gs).
     var sign;
     if (t.Group === 'Income') sign = 1;
     else if (t.Group === 'Transfer') sign = (t.Category === 'Transfer In' || t.Category === 'Transfer Masuk') ? 1 : -1;
@@ -8161,40 +8288,73 @@ function computeAccountBalances() {
   });
 
   var names = accounts.map(function (a) { return a.Name; });
-  Object.keys(balances).forEach(function (n) { if (names.indexOf(n) === -1 && n) names.push(n); });
+  Object.keys(balances).forEach(function (n) { if (names.indexOf(n) === -1 && n) { names.push(n); typeOf[n] = typeOf[n] || 'Bank'; } });
   var total = names.reduce(function (s, n) { return s + (balances[n] || 0); }, 0);
 
-  return { names: names, balances: balances, total: total };
+  // Dipecah jadi 2 kelompok — dipakai halaman Accounts (Bank widget desktop
+  // & halaman Bank mobile) supaya "Total Cash & Bank" tidak ke-net sama
+  // saldo minus kartu kredit (lihat diskusi ttg kenapa itu bisa menyesatkan).
+  var cashNames = names.filter(function (n) { return typeOf[n] === 'Bank'; });
+  var creditNames = names.filter(function (n) { return typeOf[n] !== 'Bank'; });
+  var cashTotal = cashNames.reduce(function (s, n) { return s + (balances[n] || 0); }, 0);
+  var creditTotal = creditNames.reduce(function (s, n) { return s + (balances[n] || 0); }, 0);
+
+  return {
+    names: names, balances: balances, total: total, typeOf: typeOf,
+    cashNames: cashNames, creditNames: creditNames, cashTotal: cashTotal, creditTotal: creditTotal
+  };
+}
+
+/* Dipakai populateAccountSelect/populatePocketAccountSelect utk menyembunyikan
+ * kartu yang sudah "Ditutup" (Active=false) dari dropdown transaksi BARU —
+ * riwayat transaksi lamanya TETAP ada & tetap kelihatan di Transactions/
+ * Riwayat kartu, cuma tidak bisa dipilih lagi utk transaksi baru. Akun
+ * Bank/Cash TIDAK PERNAH difilter dari sini — kolom Active cuma relevan utk
+ * Type Credit Card/Paylater (lihat SETUP_HEADERS_ACCOUNT di Kode.gs). */
+function isAccountSelectable_(a) {
+  var isCredit = (a.Type === 'Credit Card' || a.Type === 'Paylater');
+  if (!isCredit) return true;
+  return !(a.Active === false || String(a.Active).toLowerCase() === 'false');
 }
 
 function renderMobileBank() {
   var acc = computeAccountBalances();
-  var names = acc.names, balances = acc.balances;
 
-  setText('m-bk-total', rupiah(acc.total));
+  setText('m-bk-total', rupiah(acc.cashTotal));
 
   var wrap = document.getElementById('m-bk-list');
   if (!wrap) return;
-  if (!names.length) {
+  var accountsByName = {};
+  (STATE.data.setup.account || []).forEach(function (a) { accountsByName[a.Name] = a; });
+
+  function rowHtml(n) {
+    var bal = acc.balances[n] || 0;
+    var type = acc.typeOf[n];
+    var isCredit = type === 'Credit Card' || type === 'Paylater';
+    var a = accountsByName[n];
+    if (isCredit && a && !isAccountSelectable_(a)) return ''; // kartu ditutup, jangan tampil di Accounts
+    var color = isCredit ? '#7c3aed' : (bal >= 0 ? '#166534' : '#dc2626');
+    var bg = isCredit ? '#ede9fe' : (bal >= 0 ? '#dcfce7' : '#fee2e2');
+    var icon = isCredit ? 'fa-credit-card' : 'fa-building-columns';
+    if (isCredit && a && a.Color) { color = a.Color; bg = a.Color + '22'; }
+    return '' +
+      '<div class="m-list-row">' +
+        '<div class="m-list-row-icon" style="background:' + bg + ';color:' + color + ';"><i class="fas ' + icon + '"></i></div>' +
+        '<div class="m-list-row-body">' +
+          '<div class="m-list-row-title">' + escapeHtml(n) + '</div>' +
+          '<div class="m-list-row-sub">' + (isCredit ? 'Credit account' : 'Based on this year\'s transactions') + '</div>' +
+        '</div>' +
+        '<div class="m-list-row-right">' +
+          '<div class="m-list-row-value" style="color:' + (bal >= 0 ? '#166534' : '#dc2626') + ';">' + rupiah(bal) + '</div>' +
+        '</div>' +
+      '</div>';
+  }
+
+  if (!acc.names.length) {
     wrap.innerHTML = '<div class="m-empty-hint"><i class="fas fa-inbox"></i>No accounts yet. Add one from Profile &rarr; Categories &rarr; Account.</div>';
     return;
   }
-  wrap.innerHTML = names.map(function (n) {
-    var bal = balances[n] || 0;
-    var color = bal >= 0 ? '#166534' : '#dc2626';
-    var bg = bal >= 0 ? '#dcfce7' : '#fee2e2';
-    return '' +
-      '<div class="m-list-row">' +
-        '<div class="m-list-row-icon" style="background:' + bg + ';color:' + color + ';"><i class="fas fa-building-columns"></i></div>' +
-        '<div class="m-list-row-body">' +
-          '<div class="m-list-row-title">' + escapeHtml(n) + '</div>' +
-          '<div class="m-list-row-sub">Based on this year\'s transactions</div>' +
-        '</div>' +
-        '<div class="m-list-row-right">' +
-          '<div class="m-list-row-value" style="color:' + color + ';">' + rupiah(bal) + '</div>' +
-        '</div>' +
-      '</div>';
-  }).join('');
+  wrap.innerHTML = acc.cashNames.map(rowHtml).join('') + acc.creditNames.map(rowHtml).join('');
 }
 
 /* ==================================================================
@@ -8207,7 +8367,7 @@ function renderMobileBank() {
  *  dikecualikan dari situ), tapi tetap memperbarui saldo per akun (lihat
  *  computeAccountBalances()).
  * ================================================================== */
-function mOpenAccountTransfer() {
+function mOpenAccountTransfer(presetTo) {
   var body = document.getElementById('m-sheet-body');
   body.innerHTML =
     '<div class="m-form-field">' +
@@ -8238,6 +8398,7 @@ function mOpenAccountTransfer() {
 
   populateAccountSelect('m-at-from');
   populateAccountSelect('m-at-to');
+  if (presetTo) document.getElementById('m-at-to').value = presetTo;
   document.getElementById('m-at-date').value = todayISO();
 
   mOpenSheet('Transfer Between Accounts', 'fa-right-left');
@@ -8442,14 +8603,15 @@ function mRenderDebtSheetForm(d) {
       '<input type="text" class="m-form-input" id="m-dm-name" placeholder="e.g. BCA Credit Card"></div>' +
     '<div class="m-form-field"><label class="m-form-label">Type</label>' +
       '<select class="m-form-select" id="m-dm-type">' +
-        '<option value="Credit Card">Credit Card</option>' +
         '<option value="Mortgage/KPR">Mortgage/KPR</option>' +
         '<option value="Personal Loan">Personal Loan</option>' +
         '<option value="Online Loan (Pinjol)">Online Loan (Pinjol)</option>' +
         '<option value="Vehicle Loan">Vehicle Loan</option>' +
         '<option value="Receivable">Receivable (owed to me)</option>' +
         '<option value="Other">Other</option>' +
-      '</select></div>' +
+        '<option value="Credit Card">Credit Card (old entry)</option>' +
+      '</select>' +
+      '<div class="text-muted small mt-1"><i class="fas fa-circle-info me-1"></i>Adding a NEW Credit Card or Paylater? Use the "Credit Card/Paylater" section below instead — it links straight to an account you can pick when adding a spending.</div></div>' +
     '<div class="m-form-field"><label class="m-form-label">Lender / Counterparty <span class="text-muted fw-normal">(optional)</span></label>' +
       '<input type="text" class="m-form-input" id="m-dm-lender" placeholder="e.g. Bank BCA"></div>' +
     '<div class="m-form-row2">' +
@@ -8473,7 +8635,7 @@ function mRenderDebtSheetForm(d) {
       '<button type="button" class="m-form-btn-save" onclick="mSaveDebtSheet()"><i class="fas fa-save"></i>' + (d ? 'Save Changes' : 'Save Debt/Loan') + '</button>' +
     '</div>';
 
-  document.getElementById('m-dm-type').value = d ? d.Type : 'Credit Card';
+  document.getElementById('m-dm-type').value = d ? d.Type : 'Personal Loan';
   if (d) {
     document.getElementById('m-dm-name').value = d.Name;
     document.getElementById('m-dm-lender').value = d.Lender || '';
@@ -9085,9 +9247,333 @@ function renderMobileDebt() {
         '</div>' +
       '</div>';
   }).join('');
+
+  // Section Credit Card/Paylater ada di halaman yang sama (Wealth), jadi
+  // disegarkan bareng di sini — supaya SEMUA call site renderMobileDebt()
+  // yang sudah ada (pembayaran, tambah/edit/hapus debt, dst) otomatis ikut
+  // menyegarkan kartu kredit juga, tanpa perlu menyisipkan pemanggilan baru
+  // di 10 tempat terpisah (rawan kelewat satu).
+  if (typeof renderMobileCredit === 'function') renderMobileCredit();
 }
 
 var M_ADD_GROUP = 'Needs';
+
+/* ==================================================================
+ *  CREDIT CARD / PAYLATER (mobile) — akun berbasis kredit, baris di
+ *  Setup_Account (BUKAN sheet DEBT, BUKAN sheet baru). Lihat catatan
+ *  panjang di addCreditAccount()/Kode.gs utk alasan desainnya.
+ *  "Bayar Tagihan" TIDAK dapat fungsi baru — itu mOpenAccountTransfer()
+ *  yang sudah ada, cuma di-prefill tujuannya ke kartu terkait.
+ * ================================================================== */
+/* Menggelapkan/mencerahkan warna hex — dipakai bikin gradient kartu premium
+ * dari SATU warna yang user pilih (hue tetap sama persis, cuma lightness
+ * yang diubah), supaya warna apa pun yang dipilih selalu terlihat kaya/
+ * kontras di atas background gelap, bukan pudar seperti versi kartu putih
+ * sebelumnya. percent negatif = gelapkan, positif = cerahkan. */
+function shadeColor_(hex, percent) {
+  hex = String(hex || '#6b7280').replace('#', '');
+  if (hex.length === 3) hex = hex.split('').map(function (c) { return c + c; }).join('');
+  var num = parseInt(hex, 16) || 0x6b7280;
+  var amt = Math.round(2.55 * percent);
+  var r = Math.max(0, Math.min(255, (num >> 16) + amt));
+  var g = Math.max(0, Math.min(255, ((num >> 8) & 0x00FF) + amt));
+  var b = Math.max(0, Math.min(255, (num & 0x0000FF) + amt));
+  return '#' + (0x1000000 + r * 0x10000 + g * 0x100 + b).toString(16).slice(1);
+}
+
+/* HTML satu kartu Credit Card/Paylater premium — DIPAKAI BERSAMA desktop
+ * (renderCredit) & mobile (renderMobileCredit), sama seperti
+ * creditAccountList_/buildFireResultsHtml_. payActionAttr dibiarkan sebagai
+ * parameter (nama fungsi onclick beda antar platform: mPayCreditAccount vs
+ * payCreditAccountDesktop, dst) supaya tidak perlu 2 salinan HTML terpisah. */
+function creditCardHtml_(a, bal, closedCard, actions) {
+  var limit = Number(a.Limit) || 0;
+  var color = a.Color || '#6b7280';
+  var dark1 = shadeColor_(color, -12);
+  var dark2 = shadeColor_(color, -58);
+  var usedText = rupiah(Math.abs(bal)) + (limit > 0 ? ' <span class="credit-card-limit">/ Limit ' + rupiah(limit) + '</span>' : '');
+  return '' +
+    '<div class="credit-premium-card' + (closedCard ? ' is-closed' : '') + '" style="background:linear-gradient(135deg,' + dark1 + ' 0%,' + dark2 + ' 100%);">' +
+      '<div class="credit-card-top">' +
+        '<div>' +
+          '<div class="credit-card-chip"></div>' +
+          '<div class="credit-card-name">' + escapeHtml(a.Name) + '</div>' +
+          '<div class="credit-card-lender">' + escapeHtml(a.Lender || '—') + '</div>' +
+        '</div>' +
+        '<span class="credit-card-pill">' + escapeHtml(a.Type) + (closedCard ? ' &middot; Closed' : '') + '</span>' +
+      '</div>' +
+      '<div class="credit-card-balance">' + usedText + '</div>' +
+      (a.DueDate ? '<div class="credit-card-due"><i class="fas fa-calendar-day me-1"></i>Due date ' + escapeHtml(String(a.DueDate)) + '</div>' : '') +
+      '<div class="credit-card-actions">' + actions + '</div>' +
+    '</div>';
+}
+
+function creditAccountList_() {
+  return (STATE.data.setup.account || []).filter(function (a) {
+    return a.Type === 'Credit Card' || a.Type === 'Paylater';
+  });
+}
+
+function renderMobileCredit() {
+  var wrap = document.getElementById('m-credit-list');
+  if (!wrap) return;
+  var acc = computeAccountBalances();
+  var list = creditAccountList_().slice().sort(function (a, b) {
+    return Math.abs(acc.balances[b.Name] || 0) - Math.abs(acc.balances[a.Name] || 0);
+  });
+  var active = list.filter(isAccountSelectable_);
+  var closed = list.filter(function (a) { return !isAccountSelectable_(a); });
+
+  if (!list.length) {
+    wrap.innerHTML = '<div class="m-empty-hint"><i class="fas fa-credit-card"></i>No credit card or paylater yet. Tap + above to add one.</div>';
+    return;
+  }
+
+  function cardHtml(a, closedCard) {
+    var bal = acc.balances[a.Name] || 0;
+    var dark2 = shadeColor_(a.Color || '#6b7280', -58);
+    var actions = closedCard
+      ? '<button class="credit-card-pay-btn" style="color:' + dark2 + ';" onclick="mReopenCreditAccount(\'' + a.ID + '\')"><i class="fas fa-lock-open me-1"></i>Buka Kembali</button>' +
+        '<button class="credit-card-icon-btn danger" onclick="mDeleteCreditAccount(\'' + a.ID + '\')" title="Hapus Permanen"><i class="fas fa-trash"></i></button>'
+      : '<button class="credit-card-pay-btn" style="color:' + dark2 + ';" onclick="mPayCreditAccount(\'' + a.ID + '\')" ' + (bal >= 0 ? 'disabled' : '') + '><i class="fas fa-money-bill-wave me-1"></i>Bayar Tagihan</button>' +
+        '<button class="credit-card-icon-btn" onclick="mOpenEditCreditSheet(\'' + a.ID + '\')" title="Edit"><i class="fas fa-pen"></i></button>' +
+        '<button class="credit-card-icon-btn" onclick="mCloseCreditAccount(\'' + a.ID + '\')" title="Tutup Kartu"><i class="fas fa-lock"></i></button>' +
+        '<button class="credit-card-icon-btn danger" onclick="mDeleteCreditAccount(\'' + a.ID + '\')" title="Hapus"><i class="fas fa-trash"></i></button>';
+    return '<div class="mb-2">' + creditCardHtml_(a, bal, closedCard, actions) + '</div>';
+  }
+
+  wrap.innerHTML = active.map(function (a) { return cardHtml(a, false); }).join('') +
+    (closed.length ? '<div class="text-muted small fw-bold mt-3 mb-1">KARTU DITUTUP</div>' + closed.map(function (a) { return cardHtml(a, true); }).join('') : '');
+}
+
+/* Hapus permanen — backend (deleteCreditAccount) MENOLAK kalau kartu ini
+ * sudah pernah punya transaksi (lihat Kode.gs), jadi tombol ini AMAN selalu
+ * ditampilkan (tidak perlu deteksi "sudah dipakai atau belum" di frontend);
+ * kalau ditolak, pesan error dari server sudah menjelaskan alasannya &
+ * mengarahkan ke "Tutup Kartu" sebagai gantinya. */
+function mDeleteCreditAccount(id) {
+  if (mGuardArchiveReadOnly()) return;
+  var a = creditAccountList_().find(function (x) { return x.ID === id; });
+  if (!a) return;
+  mConfirm({
+    title: 'Hapus permanen "' + a.Name + '"?',
+    msg: 'Hanya bisa dihapus kalau kartu ini BELUM PERNAH punya transaksi sama sekali. Kalau sudah pernah dipakai, gunakan "Tutup Kartu" — ini tidak bisa dibatalkan.',
+    okLabel: 'Hapus', okStyle: 'danger', icon: 'trash', iconStyle: 'danger',
+    onOk: function () {
+      showLoad('Menghapus...');
+      google.script.run
+        .withSuccessHandler(function (res) {
+          hideLoad();
+          if (!res.success) { mToast(res.message || 'Gagal menghapus.', 'error'); return; }
+          STATE.data.setup.account = STATE.data.setup.account.filter(function (x) { return x.ID !== id; });
+          renderMobileCredit();
+          if (typeof renderCredit === 'function') renderCredit();
+          if (typeof renderMobileBank === 'function') renderMobileBank();
+          if (typeof renderDashBankList === 'function') renderDashBankList();
+          mToast('Dihapus.', 'success');
+        })
+        .withFailureHandler(function (err) { hideLoad(); mToast(err.message || 'Gagal menghapus.', 'error'); })
+        .deleteCreditAccount(id);
+    }
+  });
+}
+
+var DEFAULT_CREDIT_COLOR_JS_ = '#6b7280';
+var CREDIT_EDIT_ID = null;
+
+function mOpenAddCreditSheet() {
+  if (mGuardArchiveReadOnly()) return;
+  CREDIT_EDIT_ID = null;
+  mRenderCreditSheetForm(null);
+  mOpenSheet('Add Credit Card/Paylater', 'fa-credit-card');
+}
+
+function mOpenEditCreditSheet(id) {
+  if (mGuardArchiveReadOnly()) return;
+  var a = creditAccountList_().find(function (x) { return x.ID === id; });
+  if (!a) return;
+  CREDIT_EDIT_ID = id;
+  mRenderCreditSheetForm(a);
+  mOpenSheet('Edit Credit Card/Paylater', 'fa-pen');
+}
+
+function mRenderCreditSheetForm(a) {
+  var body = document.getElementById('m-sheet-body');
+  body.innerHTML =
+    '<div class="m-form-field"><label class="m-form-label">Name</label>' +
+      '<input type="text" class="m-form-input" id="m-cm-name" placeholder="e.g. CC CIMB Niaga"' + (a ? ' disabled' : '') + '></div>' +
+    (a ? '<div class="text-muted small mb-2"><i class="fas fa-circle-info me-1"></i>Name can\'t be changed once created — old transactions still refer to this exact name.</div>' : '') +
+    '<div class="m-form-field"><label class="m-form-label">Type</label>' +
+      '<select class="m-form-select" id="m-cm-type"' + (a ? ' disabled' : '') + '>' +
+        '<option value="Credit Card">Credit Card</option>' +
+        '<option value="Paylater">Paylater</option>' +
+      '</select></div>' +
+    '<div class="m-form-field"><label class="m-form-label">Lender / Provider <span class="text-muted fw-normal">(optional)</span></label>' +
+      '<input type="text" class="m-form-input" id="m-cm-lender" placeholder="e.g. CIMB Niaga" oninput="mAutoSuggestCreditColor()"></div>' +
+    '<div class="m-form-row2">' +
+      '<div class="m-form-field"><label class="m-form-label">Limit</label>' +
+        '<div class="m-form-amount-wrap"><span class="m-form-amount-prefix">Rp</span>' +
+        '<input type="text" class="m-form-input is-amount with-prefix" id="m-cm-limit" placeholder="0" inputmode="numeric" oninput="bindRupiahInputEvent(this)"></div></div>' +
+      '<div class="m-form-field"><label class="m-form-label">Due Date <span class="text-muted fw-normal">(optional)</span></label>' +
+        '<input type="text" class="m-form-input" id="m-cm-duedate" placeholder="e.g. 25"></div>' +
+    '</div>' +
+    '<div class="m-form-row2">' +
+      '<div class="m-form-field"><label class="m-form-label">Interest Rate (%/yr) <span class="text-muted fw-normal">(optional)</span></label>' +
+        '<input type="text" class="m-form-input" id="m-cm-rate" placeholder="0" inputmode="decimal"></div>' +
+      '<div class="m-form-field"><label class="m-form-label">Min. Payment <span class="text-muted fw-normal">(optional)</span></label>' +
+        '<div class="m-form-amount-wrap"><span class="m-form-amount-prefix">Rp</span>' +
+        '<input type="text" class="m-form-input is-amount with-prefix" id="m-cm-minpayment" placeholder="0" inputmode="numeric" oninput="bindRupiahInputEvent(this)"></div></div>' +
+    '</div>' +
+    '<div class="m-form-field"><label class="m-form-label">Color</label>' +
+      '<input type="color" class="m-form-input" id="m-cm-color" style="height:44px;padding:4px;" value="' + (a && a.Color ? a.Color : DEFAULT_CREDIT_COLOR_JS_) + '"></div>' +
+    '<div class="m-sheet-hint mb-2"><i class="fas fa-circle-info me-1"></i>Starts at Rp0 — history before today is not tracked. Once saved, this shows up as a normal Account option when adding a spending.</div>' +
+    '<div class="m-form-actions" style="border-top:none;padding-top:0;margin-top:8px;">' +
+      '<button type="button" class="m-form-btn-save" onclick="mSaveCreditSheet()"><i class="fas fa-save"></i>' + (a ? 'Save Changes' : 'Save Credit Card/Paylater') + '</button>' +
+    '</div>';
+
+  if (a) {
+    document.getElementById('m-cm-name').value = a.Name;
+    document.getElementById('m-cm-type').value = a.Type;
+    document.getElementById('m-cm-lender').value = a.Lender || '';
+    document.getElementById('m-cm-limit').value = a.Limit ? Number(a.Limit).toLocaleString('id-ID') : '';
+    document.getElementById('m-cm-duedate').value = a.DueDate || '';
+    document.getElementById('m-cm-rate').value = a.InterestRate || '';
+    document.getElementById('m-cm-minpayment').value = a.MinPayment ? Number(a.MinPayment).toLocaleString('id-ID') : '';
+  }
+}
+
+function mAutoSuggestCreditColor() {
+  // Cuma preview lokal (peta warna client-side, sama isinya dengan
+  // CREDIT_LENDER_COLORS_ di Kode.gs) — tetap dikonfirmasi ulang oleh
+  // server saat Save (suggestCreditColor), tidak dianggap sumber kebenaran.
+  var lender = document.getElementById('m-cm-lender').value.trim().toLowerCase();
+  var colorEl = document.getElementById('m-cm-color');
+  if (!colorEl || colorEl.dataset.userPicked === '1') return;
+  var map = CREDIT_LENDER_COLORS_JS_;
+  colorEl.value = map[lender] || DEFAULT_CREDIT_COLOR_JS_;
+}
+var CREDIT_LENDER_COLORS_JS_ = {
+  'bca': '#005CAA', 'cimb niaga': '#7A1E1E', 'bank mandiri': '#003D79', 'mandiri': '#003D79',
+  'bri': '#00529C', 'bni': '#F37021', 'kredivo': '#009A5B', 'shopee paylater': '#EE4D2D',
+  'shopeepaylater': '#EE4D2D', 'akulaku': '#E30016', 'gopaylater': '#00AA13', 'gopay later': '#00AA13',
+  'ovo': '#4C3494', 'kredit pintar': '#0072CE'
+};
+
+function mSaveCreditSheet() {
+  var payload = {
+    id: CREDIT_EDIT_ID,
+    name: document.getElementById('m-cm-name').value.trim(),
+    type: document.getElementById('m-cm-type').value,
+    lender: document.getElementById('m-cm-lender').value.trim(),
+    limit: rawNumber(document.getElementById('m-cm-limit')),
+    dueDate: document.getElementById('m-cm-duedate').value.trim(),
+    interestRate: parseFloat(document.getElementById('m-cm-rate').value) || 0,
+    minPayment: rawNumber(document.getElementById('m-cm-minpayment')),
+    color: document.getElementById('m-cm-color').value
+  };
+  if (!payload.name) { mToast('Please enter a name.', 'warn'); return; }
+
+  showLoad('Saving...');
+  if (CREDIT_EDIT_ID) {
+    google.script.run
+      .withSuccessHandler(function (res) {
+        hideLoad();
+        if (!res.success) { mToast(res.message || 'Failed.', 'error'); return; }
+        var idx = STATE.data.setup.account.findIndex(function (x) { return x.ID === CREDIT_EDIT_ID; });
+        if (idx > -1) {
+          STATE.data.setup.account[idx] = Object.assign({}, STATE.data.setup.account[idx], {
+            Limit: payload.limit, DueDate: payload.dueDate, InterestRate: payload.interestRate,
+            MinPayment: payload.minPayment, Lender: payload.lender, Color: payload.color
+          });
+        }
+        mCloseSheet();
+        mToast('Saved!', 'success');
+        renderMobileCredit();
+        if (typeof renderCredit === 'function') renderCredit();
+        if (typeof renderMobileBank === 'function') renderMobileBank();
+        if (typeof renderDashBankList === 'function') renderDashBankList();
+      })
+      .withFailureHandler(function (err) { hideLoad(); mToast(err.message || 'Failed.', 'error'); })
+      .updateCreditAccount(payload);
+  } else {
+    google.script.run
+      .withSuccessHandler(function (res) {
+        hideLoad();
+        if (!res.success) { mToast(res.message || 'Failed.', 'error'); return; }
+        STATE.data.setup.account.push(res.record);
+        mCloseSheet();
+        mToast('Saved!', 'success');
+        renderMobileCredit();
+        if (typeof renderCredit === 'function') renderCredit();
+        if (typeof renderMobileBank === 'function') renderMobileBank();
+        if (typeof renderDashBankList === 'function') renderDashBankList();
+      })
+      .withFailureHandler(function (err) { hideLoad(); mToast(err.message || 'Failed.', 'error'); })
+      .addCreditAccount(payload);
+  }
+}
+
+/* "Bayar Tagihan" = jalan pintas ke Transfer Antar Akun yang sudah ada,
+ * cuma "To Account" di-prefill ke kartu ini (lihat mOpenAccountTransfer). */
+function mPayCreditAccount(id) {
+  if (mGuardArchiveReadOnly()) return;
+  var a = creditAccountList_().find(function (x) { return x.ID === id; });
+  if (!a) return;
+  mOpenAccountTransfer(a.Name);
+}
+
+function mCloseCreditAccount(id) {
+  if (mGuardArchiveReadOnly()) return;
+  var a = creditAccountList_().find(function (x) { return x.ID === id; });
+  if (!a) return;
+  var acc = computeAccountBalances();
+  var bal = acc.balances[a.Name] || 0;
+  if (Math.round(bal) !== 0) {
+    mToast('Lunasi dulu sisa tagihan sebelum menutup kartu ini.', 'warn');
+    return;
+  }
+  mConfirm({
+    title: 'Tutup kartu "' + a.Name + '"?',
+    msg: 'Kartu ini akan hilang dari pilihan Account saat menambah transaksi baru. Riwayat transaksi lama tetap ada & tetap bisa dibuka.',
+    okLabel: 'Tutup Kartu', okStyle: 'danger', icon: 'lock', iconStyle: 'danger',
+    onOk: function () {
+      showLoad('Menutup kartu...');
+      google.script.run
+        .withSuccessHandler(function (res) {
+          hideLoad();
+          if (!res.success) { mToast(res.message || 'Gagal.', 'error'); return; }
+          var idx = STATE.data.setup.account.findIndex(function (x) { return x.ID === id; });
+          if (idx > -1) STATE.data.setup.account[idx].Active = false;
+          renderMobileCredit();
+          if (typeof renderCredit === 'function') renderCredit();
+          if (typeof renderMobileBank === 'function') renderMobileBank();
+          if (typeof renderDashBankList === 'function') renderDashBankList();
+          mToast('Kartu ditutup.', 'success');
+        })
+        .withFailureHandler(function (err) { hideLoad(); mToast(err.message || 'Gagal.', 'error'); })
+        .setCreditAccountActive(id, false, bal);
+    }
+  });
+}
+
+function mReopenCreditAccount(id) {
+  if (mGuardArchiveReadOnly()) return;
+  showLoad('Membuka kembali...');
+  google.script.run
+    .withSuccessHandler(function (res) {
+      hideLoad();
+      if (!res.success) { mToast(res.message || 'Gagal.', 'error'); return; }
+      var idx = STATE.data.setup.account.findIndex(function (x) { return x.ID === id; });
+      if (idx > -1) STATE.data.setup.account[idx].Active = true;
+      renderMobileCredit();
+      if (typeof renderCredit === 'function') renderCredit();
+      if (typeof renderMobileBank === 'function') renderMobileBank();
+      if (typeof renderDashBankList === 'function') renderDashBankList();
+      mToast('Kartu dibuka kembali.', 'success');
+    })
+    .withFailureHandler(function (err) { hideLoad(); mToast(err.message || 'Gagal.', 'error'); })
+    .setCreditAccountActive(id, true, 0);
+}
 
 function mGo(view) {
   M_VIEWS.forEach(function (v) {
@@ -10426,27 +10912,37 @@ function renderDashBankList() {
   var wrap = document.getElementById('dash-bank-list');
   if (!wrap) return;
   var acc = computeAccountBalances();
+  var accountsByName = {};
+  (STATE.data.setup.account || []).forEach(function (a) { accountsByName[a.Name] = a; });
 
   var totalEl = document.getElementById('dash-bank-total');
-  if (totalEl) totalEl.textContent = rupiah(acc.total);
+  if (totalEl) totalEl.textContent = rupiah(acc.cashTotal);
 
   if (!acc.names.length) {
     wrap.innerHTML = '<div class="empty-hint">No accounts yet. Add one in Settings &rarr; Setup &rarr; Account.</div>';
     return;
   }
-  wrap.innerHTML = acc.names.map(function (n) {
+  function rowHtml(n) {
     var bal = acc.balances[n] || 0;
+    var type = acc.typeOf[n];
+    var isCredit = type === 'Credit Card' || type === 'Paylater';
+    var a = accountsByName[n];
+    if (isCredit && a && !isAccountSelectable_(a)) return ''; // kartu ditutup
     var color = bal >= 0 ? '#166534' : '#dc2626';
-    var bg = bal >= 0 ? '#dcfce7' : '#fee2e2';
+    var iconColor = isCredit ? '#7c3aed' : color;
+    var bg = isCredit ? '#ede9fe' : (bal >= 0 ? '#dcfce7' : '#fee2e2');
+    var icon = isCredit ? 'fa-credit-card' : 'fa-building-columns';
+    if (isCredit && a && a.Color) { iconColor = a.Color; bg = a.Color + '22'; }
     return '' +
       '<div class="d-flex justify-content-between align-items-center py-2 border-bottom">' +
         '<div class="d-flex align-items-center gap-2">' +
-          '<div class="stat-icon" style="width:34px;height:34px;font-size:.85rem;background:' + bg + ';color:' + color + ';"><i class="fas fa-building-columns"></i></div>' +
+          '<div class="stat-icon" style="width:34px;height:34px;font-size:.85rem;background:' + bg + ';color:' + iconColor + ';"><i class="fas ' + icon + '"></i></div>' +
           '<div class="fw-semibold small">' + escapeHtml(n) + '</div>' +
         '</div>' +
         '<div class="fw-bold small" style="color:' + color + ';">' + rupiah(bal) + '</div>' +
       '</div>';
-  }).join('');
+  }
+  wrap.innerHTML = acc.cashNames.map(rowHtml).join('') + acc.creditNames.map(rowHtml).join('');
 }
 
 /* ---------------------------------------------------------------- */
@@ -11038,7 +11534,7 @@ function populateSelectFromSetup(id, list) {
 function populateAccountSelect(id) {
   var sel = document.getElementById(id);
   if (!sel) return;
-  var list = STATE.data.setup.account || [];
+  var list = (STATE.data.setup.account || []).filter(isAccountSelectable_);
   sel.innerHTML = list.map(function (a) { return '<option value="' + escapeHtml(a.Name) + '">' + escapeHtml(a.Name) + '</option>'; }).join('');
 }
 
@@ -11047,7 +11543,7 @@ function populateAccountSelect(id) {
 function populatePocketAccountSelect(id) {
   var sel = document.getElementById(id);
   if (!sel) return;
-  var list = STATE.data.setup.account || [];
+  var list = (STATE.data.setup.account || []).filter(isAccountSelectable_);
   sel.innerHTML = '<option value="">— (No Account)</option>' +
     list.map(function (a) { return '<option value="' + escapeHtml(a.Name) + '">' + escapeHtml(a.Name) + '</option>'; }).join('');
 }
@@ -11128,6 +11624,10 @@ function prepareTransferAccountForm() {
   populateAccountSelect('at-from');
   populateAccountSelect('at-to');
   if (!document.getElementById('at-date').value) document.getElementById('at-date').value = todayISO();
+  if (PRESET_TRANSFER_TO_) {
+    document.getElementById('at-to').value = PRESET_TRANSFER_TO_;
+    PRESET_TRANSFER_TO_ = null;
+  }
 }
 
 function resetTransferAccountForm() {
@@ -12306,6 +12806,248 @@ function renderDebt() {
     }
   }
   refreshTotalWealth();
+
+  // Section Credit Card/Paylater ada di halaman yang sama, disegarkan bareng
+  // di sini — sama seperti renderMobileDebt() memanggil renderMobileCredit()
+  // (lihat catatan di sana), supaya semua call site renderDebt() yang sudah
+  // ada otomatis ikut menyegarkan kartu kredit tanpa perlu disisipkan satu-satu.
+  if (typeof renderCredit === 'function') renderCredit();
+}
+
+/* ==================================================================
+ *  CREDIT CARD / PAYLATER (desktop) — versi desktop dari section mobile
+ *  yang sama (lihat renderMobileCredit dkk). Baris data di Setup_Account,
+ *  BUKAN sheet DEBT, BUKAN sheet baru — lihat catatan di addCreditAccount()/
+ *  Kode.gs. "Bayar Tagihan" TIDAK dapat fungsi baru — pindah ke halaman
+ *  "Transfer Account" yang sudah ada, cuma di-prefill tujuannya.
+ *  creditAccountList_() DIPAKAI BERSAMA desktop & mobile — definisinya ada
+ *  satu saja, di dekat renderMobileCredit() (pola yang sama seperti
+ *  buildFireResultsHtml_ yang juga dipakai bersama kedua platform).
+ *  CREDIT_EDIT_ID juga dipakai bersama (deklarasi tunggal di dekat
+ *  renderMobileCredit(), pola sama seperti DEBT_EDIT_ID).
+ * ================================================================== */
+var PRESET_TRANSFER_TO_ = null;
+
+function renderCredit() {
+  var wrap = document.getElementById('credit-cards-wrap');
+  if (!wrap) return;
+  var acc = computeAccountBalances();
+  var list = creditAccountList_().slice().sort(function (a, b) {
+    return Math.abs(acc.balances[b.Name] || 0) - Math.abs(acc.balances[a.Name] || 0);
+  });
+  var active = list.filter(isAccountSelectable_);
+  var closed = list.filter(function (a) { return !isAccountSelectable_(a); });
+
+  if (!list.length) {
+    wrap.innerHTML = '<div class="col-12"><div class="empty-hint"><i class="fas fa-info-circle me-1"></i>No credit card or paylater yet. Click "Add Credit Card/Paylater" to start tracking.</div></div>';
+    return;
+  }
+
+  function cardHtml(a, closedCard) {
+    var bal = acc.balances[a.Name] || 0;
+    var dark2 = shadeColor_(a.Color || '#6b7280', -58);
+    var actions = closedCard
+      ? '<button class="credit-card-pay-btn" style="color:' + dark2 + ';" onclick="reopenCreditAccountDesktop(\'' + a.ID + '\')"><i class="fas fa-lock-open me-1"></i>Buka Kembali</button>' +
+        '<button class="credit-card-icon-btn danger" onclick="deleteCreditAccountDesktop(\'' + a.ID + '\')" title="Hapus Permanen"><i class="fas fa-trash"></i></button>'
+      : '<button class="credit-card-pay-btn" style="color:' + dark2 + ';" onclick="payCreditAccountDesktop(\'' + a.ID + '\')" ' + (bal >= 0 ? 'disabled' : '') + '><i class="fas fa-money-bill-wave me-1"></i>Bayar Tagihan</button>' +
+        '<button class="credit-card-icon-btn" onclick="openEditCreditModal(\'' + a.ID + '\')" title="Edit"><i class="fas fa-pen"></i></button>' +
+        '<button class="credit-card-icon-btn" onclick="closeCreditAccountDesktop(\'' + a.ID + '\')" title="Tutup Kartu"><i class="fas fa-lock"></i></button>' +
+        '<button class="credit-card-icon-btn danger" onclick="deleteCreditAccountDesktop(\'' + a.ID + '\')" title="Hapus"><i class="fas fa-trash"></i></button>';
+    return '<div class="col-12 col-md-6 col-xl-4">' + creditCardHtml_(a, bal, closedCard, actions) + '</div>';
+  }
+
+  wrap.innerHTML = active.map(function (a) { return cardHtml(a, false); }).join('') +
+    (closed.length ? '<div class="col-12 text-muted small fw-bold mt-2 mb-1">KARTU DITUTUP</div>' + closed.map(function (a) { return cardHtml(a, true); }).join('') : '');
+}
+
+/* Hapus permanen (desktop) — backend menolak kalau kartu sudah pernah
+ * punya transaksi (lihat deleteCreditAccount di Kode.gs), jadi tombol ini
+ * aman selalu ditampilkan; error dari server sudah menjelaskan alasannya. */
+function deleteCreditAccountDesktop(id) {
+  if (mGuardArchiveReadOnly()) return;
+  var a = creditAccountList_().find(function (x) { return x.ID === id; });
+  if (!a) return;
+  Swal.fire({
+    title: 'Hapus permanen "' + a.Name + '"?',
+    text: 'Hanya bisa dihapus kalau kartu ini BELUM PERNAH punya transaksi sama sekali. Kalau sudah pernah dipakai, gunakan "Tutup Kartu" — ini tidak bisa dibatalkan.',
+    icon: 'warning', showCancelButton: true, confirmButtonText: 'Hapus', confirmButtonColor: '#dc2626'
+  }).then(function (r) {
+    if (!r.isConfirmed) return;
+    showLoad('Menghapus...');
+    google.script.run
+      .withSuccessHandler(function (res) {
+        hideLoad();
+        if (!res.success) { Swal.fire('Error', res.message, 'error'); return; }
+        STATE.data.setup.account = STATE.data.setup.account.filter(function (x) { return x.ID !== id; });
+        renderCredit();
+        if (typeof renderMobileCredit === 'function') renderMobileCredit();
+        renderDashBankList();
+        Swal.fire({ icon: 'success', title: 'Dihapus', timer: 1000, showConfirmButton: false });
+      })
+      .withFailureHandler(function (err) { hideLoad(); Swal.fire('Error', err.message, 'error'); })
+      .deleteCreditAccount(id);
+  });
+}
+
+function openAddCreditModal() {
+  if (mGuardArchiveReadOnly()) return;
+  CREDIT_EDIT_ID = null;
+  document.getElementById('credit-modal-title').innerHTML = '<i class="fas fa-credit-card me-2"></i>Add Credit Card/Paylater';
+  ['cm-name', 'cm-lender', 'cm-limit', 'cm-duedate', 'cm-rate', 'cm-minpayment'].forEach(function (id) {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('cm-type').value = 'Credit Card';
+  document.getElementById('cm-color').value = '#6b7280';
+  document.getElementById('cm-name').disabled = false;
+  document.getElementById('cm-type').disabled = false;
+  document.getElementById('cm-name-locked-hint').style.display = 'none';
+  new bootstrap.Modal(document.getElementById('modal-credit')).show();
+}
+
+function openEditCreditModal(id) {
+  if (mGuardArchiveReadOnly()) return;
+  var a = creditAccountList_().find(function (x) { return x.ID === id; });
+  if (!a) return;
+  CREDIT_EDIT_ID = id;
+  document.getElementById('credit-modal-title').innerHTML = '<i class="fas fa-pen me-2"></i>Edit Credit Card/Paylater';
+  document.getElementById('cm-name').value = a.Name;
+  document.getElementById('cm-type').value = a.Type;
+  document.getElementById('cm-lender').value = a.Lender || '';
+  document.getElementById('cm-limit').value = a.Limit ? Number(a.Limit).toLocaleString('id-ID') : '';
+  document.getElementById('cm-duedate').value = a.DueDate || '';
+  document.getElementById('cm-rate').value = a.InterestRate || '';
+  document.getElementById('cm-minpayment').value = a.MinPayment ? Number(a.MinPayment).toLocaleString('id-ID') : '';
+  document.getElementById('cm-color').value = a.Color || '#6b7280';
+  document.getElementById('cm-name').disabled = true;
+  document.getElementById('cm-type').disabled = true;
+  document.getElementById('cm-name-locked-hint').style.display = '';
+  new bootstrap.Modal(document.getElementById('modal-credit')).show();
+}
+
+function autoSuggestCreditColor() {
+  // Preview lokal saja (peta warna sama dengan CREDIT_LENDER_COLORS_ di
+  // Kode.gs) — tetap dikonfirmasi ulang server saat Save.
+  if (CREDIT_EDIT_ID) return; // jangan timpa warna yang sudah dipilih saat edit
+  var lender = document.getElementById('cm-lender').value.trim().toLowerCase();
+  var map = { 'bca': '#005CAA', 'cimb niaga': '#7A1E1E', 'bank mandiri': '#003D79', 'mandiri': '#003D79',
+    'bri': '#00529C', 'bni': '#F37021', 'kredivo': '#009A5B', 'shopee paylater': '#EE4D2D',
+    'shopeepaylater': '#EE4D2D', 'akulaku': '#E30016', 'gopaylater': '#00AA13', 'gopay later': '#00AA13',
+    'ovo': '#4C3494', 'kredit pintar': '#0072CE' };
+  document.getElementById('cm-color').value = map[lender] || '#6b7280';
+}
+
+function saveCreditModal() {
+  var payload = {
+    id: CREDIT_EDIT_ID,
+    name: document.getElementById('cm-name').value.trim(),
+    type: document.getElementById('cm-type').value,
+    lender: document.getElementById('cm-lender').value.trim(),
+    limit: rawNumber(document.getElementById('cm-limit')),
+    dueDate: document.getElementById('cm-duedate').value.trim(),
+    interestRate: parseFloat(document.getElementById('cm-rate').value) || 0,
+    minPayment: rawNumber(document.getElementById('cm-minpayment')),
+    color: document.getElementById('cm-color').value
+  };
+  if (!payload.name) { Swal.fire('Incomplete', 'Please enter a name.', 'warning'); return; }
+
+  showLoad('Saving...');
+  if (CREDIT_EDIT_ID) {
+    google.script.run
+      .withSuccessHandler(function (res) {
+        hideLoad();
+        if (!res.success) { Swal.fire('Error', res.message, 'error'); return; }
+        var idx = STATE.data.setup.account.findIndex(function (x) { return x.ID === CREDIT_EDIT_ID; });
+        if (idx > -1) {
+          STATE.data.setup.account[idx] = Object.assign({}, STATE.data.setup.account[idx], {
+            Limit: payload.limit, DueDate: payload.dueDate, InterestRate: payload.interestRate,
+            MinPayment: payload.minPayment, Lender: payload.lender, Color: payload.color
+          });
+        }
+        bootstrap.Modal.getInstance(document.getElementById('modal-credit')).hide();
+        renderCredit();
+        if (typeof renderMobileCredit === 'function') renderMobileCredit();
+        renderDashBankList();
+        Swal.fire({ icon: 'success', title: 'Saved!', timer: 1200, showConfirmButton: false });
+      })
+      .withFailureHandler(function (err) { hideLoad(); Swal.fire('Error', err.message, 'error'); })
+      .updateCreditAccount(payload);
+  } else {
+    google.script.run
+      .withSuccessHandler(function (res) {
+        hideLoad();
+        if (!res.success) { Swal.fire('Error', res.message, 'error'); return; }
+        STATE.data.setup.account.push(res.record);
+        bootstrap.Modal.getInstance(document.getElementById('modal-credit')).hide();
+        renderCredit();
+        if (typeof renderMobileCredit === 'function') renderMobileCredit();
+        renderDashBankList();
+        Swal.fire({ icon: 'success', title: 'Saved!', timer: 1200, showConfirmButton: false });
+      })
+      .withFailureHandler(function (err) { hideLoad(); Swal.fire('Error', err.message, 'error'); })
+      .addCreditAccount(payload);
+  }
+}
+
+/* "Bayar Tagihan" = jalan pintas ke halaman Transfer Account yang sudah
+ * ada, "To Account" di-prefill ke kartu ini lewat PRESET_TRANSFER_TO_
+ * (dibaca & dibersihkan sekali oleh prepareTransferAccountForm()). */
+function payCreditAccountDesktop(id) {
+  if (mGuardArchiveReadOnly()) return;
+  var a = creditAccountList_().find(function (x) { return x.ID === id; });
+  if (!a) return;
+  PRESET_TRANSFER_TO_ = a.Name;
+  go('transfer-account');
+}
+
+function closeCreditAccountDesktop(id) {
+  if (mGuardArchiveReadOnly()) return;
+  var a = creditAccountList_().find(function (x) { return x.ID === id; });
+  if (!a) return;
+  var acc = computeAccountBalances();
+  var bal = acc.balances[a.Name] || 0;
+  if (Math.round(bal) !== 0) {
+    Swal.fire('Belum bisa ditutup', 'Lunasi dulu sisa tagihan sebelum menutup kartu ini.', 'warning');
+    return;
+  }
+  Swal.fire({
+    title: 'Tutup kartu "' + a.Name + '"?',
+    text: 'Kartu ini akan hilang dari pilihan Account saat menambah transaksi baru. Riwayat transaksi lama tetap ada & tetap bisa dibuka.',
+    icon: 'warning', showCancelButton: true, confirmButtonText: 'Tutup Kartu', confirmButtonColor: '#dc2626'
+  }).then(function (r) {
+    if (!r.isConfirmed) return;
+    showLoad('Menutup kartu...');
+    google.script.run
+      .withSuccessHandler(function (res) {
+        hideLoad();
+        if (!res.success) { Swal.fire('Error', res.message, 'error'); return; }
+        var idx = STATE.data.setup.account.findIndex(function (x) { return x.ID === id; });
+        if (idx > -1) STATE.data.setup.account[idx].Active = false;
+        renderCredit();
+        if (typeof renderMobileCredit === 'function') renderMobileCredit();
+        renderDashBankList();
+        Swal.fire({ icon: 'success', title: 'Kartu ditutup', timer: 1200, showConfirmButton: false });
+      })
+      .withFailureHandler(function (err) { hideLoad(); Swal.fire('Error', err.message, 'error'); })
+      .setCreditAccountActive(id, false, bal);
+  });
+}
+
+function reopenCreditAccountDesktop(id) {
+  if (mGuardArchiveReadOnly()) return;
+  showLoad('Membuka kembali...');
+  google.script.run
+    .withSuccessHandler(function (res) {
+      hideLoad();
+      if (!res.success) { Swal.fire('Error', res.message, 'error'); return; }
+      var idx = STATE.data.setup.account.findIndex(function (x) { return x.ID === id; });
+      if (idx > -1) STATE.data.setup.account[idx].Active = true;
+      renderCredit();
+      if (typeof renderMobileCredit === 'function') renderMobileCredit();
+      renderDashBankList();
+      Swal.fire({ icon: 'success', title: 'Kartu dibuka kembali', timer: 1200, showConfirmButton: false });
+    })
+    .withFailureHandler(function (err) { hideLoad(); Swal.fire('Error', err.message, 'error'); })
+    .setCreditAccountActive(id, true, 0);
 }
 
 function mAutoFillDebtBalance() {
@@ -12820,7 +13562,7 @@ function openAddDebtModal() {
   ['dm-name', 'dm-lender', 'dm-rate', 'dm-principal', 'dm-balance', 'dm-duedate', 'dm-minpayment', 'dm-note'].forEach(function (id) {
     document.getElementById(id).value = '';
   });
-  document.getElementById('dm-type').value = 'Credit Card';
+  document.getElementById('dm-type').value = 'Personal Loan';
   new bootstrap.Modal(document.getElementById('modal-debt')).show();
 }
 
