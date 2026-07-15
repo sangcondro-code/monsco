@@ -2056,7 +2056,7 @@
             </div>
             <div class="col-md-6">
               <label class="form-label fw-bold small">To Account</label>
-              <select class="form-select" id="at-to" required></select>
+              <select class="form-select" id="at-to" required onchange="updateTransferNoteHint_('at-to','at-note')"></select>
             </div>
             <div class="col-md-6">
               <label class="form-label fw-bold small">Amount (Rp)</label>
@@ -8396,7 +8396,7 @@ function mOpenAccountTransfer(presetTo, presetNotePlaceholder) {
     '</div>' +
     '<div class="m-form-field">' +
       '<label class="m-form-label">To Account</label>' +
-      '<select class="m-form-select" id="m-at-to"></select>' +
+      '<select class="m-form-select" id="m-at-to" onchange="updateTransferNoteHint_(\'m-at-to\',\'m-at-note\')"></select>' +
     '</div>' +
     '<div class="m-form-field">' +
       '<label class="m-form-label">Amount (Rp)</label>' +
@@ -9405,6 +9405,23 @@ function updateAccountCreditHint_(selectId, hintId) {
     hint.style.display = 'none';
     hint.innerHTML = '';
   }
+}
+
+/* Sama seperti updateAccountCreditHint_, tapi khusus utk form Transfer
+ * Between Accounts — dulu placeholder Note ("e.g. Credit Card Payment - X")
+ * CUMA berubah kalau masuk lewat tombol "Pay Bill" di kartu (lihat
+ * PRESET_TRANSFER_NOTE_PLACEHOLDER_). Kalau user buka Transfer Account
+ * manual (bukan lewat Pay Bill) lalu pilih sendiri kartu kredit di "To
+ * Account", placeholder-nya tidak ikut berubah — sekarang disambungkan ke
+ * onchange "To Account" juga, supaya perilakunya konsisten APAPUN jalan
+ * masuknya ke form ini. */
+function updateTransferNoteHint_(toSelectId, noteId) {
+  var toSel = document.getElementById(toSelectId);
+  var noteEl = document.getElementById(noteId);
+  if (!toSel || !noteEl) return;
+  var a = (STATE.data.setup.account || []).find(function (x) { return x.Name === toSel.value; });
+  var isCredit = a && (a.Type === 'Credit Card' || a.Type === 'Paylater');
+  noteEl.placeholder = isCredit ? (a.Type + ' Payment - ' + a.Name) : 'e.g. Cash withdrawal';
 }
 
 function creditAccountList_() {
