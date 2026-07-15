@@ -3117,7 +3117,6 @@
               <option value="Other">Other</option>
               <option value="Credit Card">Credit Card (old entry)</option>
             </select>
-            <div class="text-muted small mt-1"><i class="fas fa-circle-info me-1"></i>Adding a NEW Credit Card or Paylater? Use the "Credit Card/Paylater" section below instead.</div>
           </div>
           <div class="col-md-6">
             <label class="form-label fw-bold small">Lender / Counterparty <span class="text-muted fw-normal">(optional)</span></label>
@@ -8384,7 +8383,7 @@ function renderMobileBank(acc) {
  *  dikecualikan dari situ), tapi tetap memperbarui saldo per akun (lihat
  *  computeAccountBalances()).
  * ================================================================== */
-function mOpenAccountTransfer(presetTo, presetNote) {
+function mOpenAccountTransfer(presetTo, presetNotePlaceholder) {
   var body = document.getElementById('m-sheet-body');
   body.innerHTML =
     '<div class="m-form-field">' +
@@ -8406,7 +8405,7 @@ function mOpenAccountTransfer(presetTo, presetNote) {
     '</div>' +
     '<div class="m-form-field">' +
       '<label class="m-form-label">Note <span class="text-muted fw-normal">(optional)</span></label>' +
-      '<input type="text" class="m-form-input" id="m-at-note" placeholder="e.g. Cash withdrawal">' +
+      '<input type="text" class="m-form-input" id="m-at-note" placeholder="' + escapeHtml(presetNotePlaceholder || 'e.g. Cash withdrawal') + '">' +
     '</div>' +
     '<div class="m-sheet-hint mb-2"><i class="fas fa-circle-info me-1"></i>Doesn\'t affect Budgeting or Income/Expense reports — only moves money between your accounts. Tip: to withdraw cash, add a "Cash" account first in Setup, then transfer to it here.</div>' +
     '<div class="m-form-actions" style="border-top:none;padding-top:0;margin-top:8px;">' +
@@ -8416,7 +8415,6 @@ function mOpenAccountTransfer(presetTo, presetNote) {
   populateAccountSelect('m-at-from');
   populateAccountSelect('m-at-to');
   if (presetTo) document.getElementById('m-at-to').value = presetTo;
-  if (presetNote) document.getElementById('m-at-note').value = presetNote;
   document.getElementById('m-at-date').value = todayISO();
 
   mOpenSheet('Transfer Between Accounts', 'fa-right-left');
@@ -8628,8 +8626,7 @@ function mRenderDebtSheetForm(d) {
         '<option value="Receivable">Receivable (owed to me)</option>' +
         '<option value="Other">Other</option>' +
         '<option value="Credit Card">Credit Card (old entry)</option>' +
-      '</select>' +
-      '<div class="text-muted small mt-1"><i class="fas fa-circle-info me-1"></i>Adding a NEW Credit Card or Paylater? Use the "Credit Card/Paylater" section below instead — it links straight to an account you can pick when adding a spending.</div></div>' +
+      '</select></div>' +
     '<div class="m-form-field"><label class="m-form-label">Lender / Counterparty <span class="text-muted fw-normal">(optional)</span></label>' +
       '<input type="text" class="m-form-input" id="m-dm-lender" placeholder="e.g. Bank BCA"></div>' +
     '<div class="m-form-row2">' +
@@ -9620,8 +9617,9 @@ function mSaveCreditSheet() {
 }
 
 /* "Pay Bill" = jalan pintas ke Transfer Antar Akun yang sudah ada, "To
- * Account" DAN Note-nya di-prefill (lihat mOpenAccountTransfer) — supaya
- * riwayat transfer ini langsung jelas maksudnya tanpa user perlu isi manual. */
+ * Account" di-prefill (lihat mOpenAccountTransfer). Note SENGAJA TIDAK
+ * diisi otomatis (permintaan user) — cuma placeholder-nya diganti jadi
+ * contoh yang relevan, user tetap ketik sendiri kalau mau. */
 function mPayCreditAccount(id) {
   if (mGuardArchiveReadOnly()) return;
   var a = creditAccountList_().find(function (x) { return x.ID === id; });
@@ -11763,10 +11761,9 @@ function prepareTransferAccountForm() {
     document.getElementById('at-to').value = PRESET_TRANSFER_TO_;
     PRESET_TRANSFER_TO_ = null;
   }
-  if (PRESET_TRANSFER_NOTE_) {
-    document.getElementById('at-note').value = PRESET_TRANSFER_NOTE_;
-    PRESET_TRANSFER_NOTE_ = null;
-  }
+  var noteEl = document.getElementById('at-note');
+  noteEl.placeholder = PRESET_TRANSFER_NOTE_PLACEHOLDER_ || 'e.g. Cash withdrawal';
+  PRESET_TRANSFER_NOTE_PLACEHOLDER_ = null;
 }
 
 function resetTransferAccountForm() {
@@ -12966,7 +12963,7 @@ function renderDebt() {
  *  renderMobileCredit(), pola sama seperti DEBT_EDIT_ID).
  * ================================================================== */
 var PRESET_TRANSFER_TO_ = null;
-var PRESET_TRANSFER_NOTE_ = null;
+var PRESET_TRANSFER_NOTE_PLACEHOLDER_ = null;
 
 function renderCredit(acc) {
   var wrap = document.getElementById('credit-cards-wrap');
@@ -13133,15 +13130,15 @@ function saveCreditModal() {
 }
 
 /* "Pay Bill" = jalan pintas ke halaman Transfer Account yang sudah ada,
- * "To Account" & Note-nya di-prefill lewat PRESET_TRANSFER_TO_/
- * PRESET_TRANSFER_NOTE_ (dibaca & dibersihkan sekali oleh
- * prepareTransferAccountForm()). */
+ * "To Account" di-prefill lewat PRESET_TRANSFER_TO_ (dibaca & dibersihkan
+ * sekali oleh prepareTransferAccountForm()). Note SENGAJA TIDAK diisi
+ * otomatis (permintaan user) — cuma placeholder-nya diganti. */
 function payCreditAccountDesktop(id) {
   if (mGuardArchiveReadOnly()) return;
   var a = creditAccountList_().find(function (x) { return x.ID === id; });
   if (!a) return;
   PRESET_TRANSFER_TO_ = a.Name;
-  PRESET_TRANSFER_NOTE_ = a.Type + ' Payment - ' + a.Name;
+  PRESET_TRANSFER_NOTE_PLACEHOLDER_ = a.Type + ' Payment - ' + a.Name;
   go('transfer-account');
 }
 
