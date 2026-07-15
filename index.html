@@ -1985,7 +1985,8 @@
             </div>
             <div class="col-md-6">
               <label class="form-label fw-bold small">Account</label>
-              <select class="form-select" id="as-account" required></select>
+              <select class="form-select" id="as-account" required onchange="updateAccountCreditHint_('as-account','as-account-hint')"></select>
+              <div id="as-account-hint" class="text-muted small mt-1" style="display:none;"></div>
             </div>
           </div>
 
@@ -4190,7 +4191,8 @@
         </div>
         <div class="m-form-field">
           <label class="m-form-label">Account</label>
-          <select class="m-form-select" id="m-as-account"></select>
+          <select class="m-form-select" id="m-as-account" onchange="updateAccountCreditHint_('m-as-account','m-as-account-hint')"></select>
+          <div id="m-as-account-hint" class="text-muted small mt-1" style="display:none;"></div>
         </div>
       </div>
 
@@ -7112,7 +7114,7 @@ function mEditPocketEntry(id) {
       '<button type="button" class="m-form-btn-save" onclick="mSaveEditPocketEntry()"><i class="fas fa-save"></i>Save Changes</button>' +
     '</div>';
 
-  populatePocketAccountSelect('m-ep-account');
+  populatePocketAccountSelect('m-ep-account', p.Account);
   document.getElementById('m-ep-date').value = p.Date;
   document.getElementById('m-ep-account').value = p.Account;
   document.getElementById('m-ep-amount').value = Number(p.Amount).toLocaleString('id-ID');
@@ -8889,7 +8891,7 @@ function mRenderRecurringForm(id) {
     '</div>';
 
   document.getElementById('m-rc-group').value = r ? r.Group : 'Income';
-  populateAccountSelect('m-rc-account');
+  populateAccountSelect('m-rc-account', r ? r.Account : null);
   mPopulateRecurringCategorySelect();
   if (r) {
     document.getElementById('m-rc-name').value = r.Name;
@@ -9289,18 +9291,42 @@ var M_ADD_GROUP = 'Needs';
  *  yang sudah ada, cuma di-prefill tujuannya ke kartu terkait.
  * ================================================================== */
 /* Menggelapkan/mencerahkan warna hex — dipakai bikin gradient kartu premium
- * dari SATU warna yang user pilih (hue tetap sama persis, cuma lightness
- * yang diubah), supaya warna apa pun yang dipilih selalu terlihat kaya/
- * kontras di atas background gelap, bukan pudar seperti versi kartu putih
- * sebelumnya. percent negatif = gelapkan, positif = cerahkan. */
+ * dari SATU warna yang user pilih, supaya warna apa pun yang dipilih selalu
+ * terlihat kaya/kontras di atas background gelap, bukan pudar seperti versi
+ * kartu putih sebelumnya. percent negatif = gelapkan, positif = cerahkan.
+ *
+ * BUG FIX PENTING: versi awal fungsi ini nambah/ngurangin jumlah TETAP yang
+ * SAMA ke ketiga channel R/G/B (mis. -71 ke semuanya). Itu KELIATAN benar di
+ * atas kertas, tapi rusak di warna yang channel-nya nggak seimbang — CIMB
+ * Niaga asli (#E1161B, R225 G22 B27) di-gelapkan -28% jadi (154, 0, 0):
+ * channel G kepotong duluan sampai 0 sementara R masih 154, RASIO warnanya
+ * berubah dari "merah murni" jadi condong ke arah lain — makanya kartu CIMB
+ * kelihatan geser ke pink/magenta padahal base color-nya sudah benar. Sudah
+ * dicek pixel-by-pixel dibanding screenshot resmi CIMB, terbukti begini.
+ *
+ * Perbaikannya: GELAPKAN dengan MENGALIKAN (bukan mengurangi) ketiga channel
+ * dengan faktor yang SAMA — ini menjaga RASIO antar channel (jadi hue-nya
+ * PERSIS sama, cuma terangnya yang turun), gimanapun juga warna dasarnya.
+ * CERAHKAN tetap dengan blend menuju putih (sudah benar dari awal, cuma
+ * dirapikan penulisannya biar konsisten). */
 function shadeColor_(hex, percent) {
   hex = String(hex || '#6b7280').replace('#', '');
   if (hex.length === 3) hex = hex.split('').map(function (c) { return c + c; }).join('');
-  var num = parseInt(hex, 16) || 0x6b7280;
-  var amt = Math.round(2.55 * percent);
-  var r = Math.max(0, Math.min(255, (num >> 16) + amt));
-  var g = Math.max(0, Math.min(255, ((num >> 8) & 0x00FF) + amt));
-  var b = Math.max(0, Math.min(255, (num & 0x0000FF) + amt));
+  var num = parseInt(hex, 16);
+  if (isNaN(num)) num = 0x6b7280;
+  var r = (num >> 16) & 0xFF, g = (num >> 8) & 0xFF, b = num & 0xFF;
+  if (percent >= 0) {
+    var t = percent / 100;
+    r = r + (255 - r) * t;
+    g = g + (255 - g) * t;
+    b = b + (255 - b) * t;
+  } else {
+    var f = 1 + percent / 100; // percent negatif, mis. -28 -> f = 0.72
+    r = r * f; g = g * f; b = b * f;
+  }
+  r = Math.max(0, Math.min(255, Math.round(r)));
+  g = Math.max(0, Math.min(255, Math.round(g)));
+  b = Math.max(0, Math.min(255, Math.round(b)));
   return '#' + (0x1000000 + r * 0x10000 + g * 0x100 + b).toString(16).slice(1);
 }
 
@@ -9360,6 +9386,27 @@ function creditCardHtml_(a, bal, closedCard, actions) {
       '</div>' +
       '<div class="credit-card-actions">' + actions + '</div>' +
     '</div>';
+}
+
+/* Hint kecil di bawah Account field (Add Spending) kalau yang dipilih itu
+ * Credit Card/Paylater — supaya user langsung ngeh transaksi ini akan
+ * NAMBAH saldo kartu itu (uang belum keluar dari rekening bank), bukan
+ * malah mengira duitnya langsung kepotong dari bank seperti akun biasa.
+ * Ini CUMA hint visual — TIDAK mengubah Note atau field lain apa pun.
+ * Dipakai bersama desktop & mobile (sama seperti creditCardHtml_ dkk). */
+function updateAccountCreditHint_(selectId, hintId) {
+  var sel = document.getElementById(selectId);
+  var hint = document.getElementById(hintId);
+  if (!sel || !hint) return;
+  var a = (STATE.data.setup.account || []).find(function (x) { return x.Name === sel.value; });
+  var isCredit = a && (a.Type === 'Credit Card' || a.Type === 'Paylater');
+  if (isCredit) {
+    hint.style.display = '';
+    hint.innerHTML = '<i class="fas fa-credit-card me-1"></i>This adds to <b>' + escapeHtml(a.Name) + '</b>\'s balance — it won\'t deduct from a bank account until you pay the bill.';
+  } else {
+    hint.style.display = 'none';
+    hint.innerHTML = '';
+  }
 }
 
 function creditAccountList_() {
@@ -9509,7 +9556,7 @@ function mAutoSuggestCreditColor() {
   colorEl.value = map[lender] || DEFAULT_CREDIT_COLOR_JS_;
 }
 var CREDIT_LENDER_COLORS_JS_ = {
-  'bca': '#0066AE', 'cimb niaga': '#E4002B', 'bank mandiri': '#003D79', 'mandiri': '#003D79',
+  'bca': '#0066AE', 'cimb niaga': '#E1161B', 'bank mandiri': '#003D79', 'mandiri': '#003D79',
   'bri': '#0658C2', 'bni': '#F37021', 'kredivo': '#009A5B', 'shopee paylater': '#EE4D2D',
   'shopeepaylater': '#EE4D2D', 'akulaku': '#E30016', 'gopaylater': '#00AA13', 'gopay later': '#00AA13',
   'ovo': '#4C3494', 'kredit pintar': '#0072CE'
@@ -9673,11 +9720,17 @@ function mGo(view) {
 
 function prepareMobileAddSpending() {
   // Populate selects from STATE
-  var accounts = STATE.data.setup.account || [];
+  // BUG FIX: dulu baris ini pakai accounts.map() langsung, TIDAK lewat
+  // isAccountSelectable_() — artinya kartu yang sudah "Ditutup" TETAP bisa
+  // dipilih di sini utk transaksi baru (fitur Tutup Kartu jadi nggak
+  // beneran nutup, cuma kosmetik). populateAccountSelect() yang sudah
+  // benar (dipakai form-form lain) TIDAK dipakai di sini dari awal karena
+  // form ini punya kode populate sendiri — sekarang disamakan filternya.
   var accSel = document.getElementById('m-as-account');
-  if (accSel) accSel.innerHTML = accounts.map(function (a) {
+  if (accSel) accSel.innerHTML = (STATE.data.setup.account || []).filter(isAccountSelectable_).map(function (a) {
     return '<option value="' + escapeHtml(a.Name) + '">' + escapeHtml(a.Name) + '</option>';
   }).join('');
+  updateAccountCreditHint_('m-as-account', 'm-as-account-hint');
 
   mSetAddGroup(M_ADD_GROUP);
 
@@ -10306,7 +10359,7 @@ function mEditTransaction(id) {
       '<button type="button" class="m-form-btn-save" onclick="mSaveEditTransaction()"><i class="fas fa-save"></i>Save Changes</button>' +
     '</div>';
 
-  populateAccountSelect('m-et-account');
+  populateAccountSelect('m-et-account', t.Account);
   document.getElementById('m-et-date').value = t.Date;
   document.getElementById('m-et-account').value = t.Account;
   document.getElementById('m-et-group').value = t.Group;
@@ -10778,7 +10831,10 @@ function rolloverTargetMonthYear_(sourceYear, sourceMonth) {
 
 function promptRolloverRemainingToIncome(opts) {
   var incomeList = STATE.data.setup.income || [];
-  var accountList = STATE.data.setup.account || [];
+  // BUG FIX: sama seperti prepareMobileAddSpending() — dulu tidak difilter
+  // isAccountSelectable_(), jadi kartu yang sudah "Ditutup" masih bisa
+  // dipilih sebagai tujuan setoran rollover.
+  var accountList = (STATE.data.setup.account || []).filter(isAccountSelectable_);
   var pocketList = STATE.data.setup.savings || [];
   var canIncome = incomeList.length && accountList.length;
   var canPocket = pocketList.length;
@@ -11470,6 +11526,7 @@ function generateAIInsightClick(targetElId, btnId) {
 }
 function prepareAddSpendingForm() {
   populateAccountSelect('as-account');
+  updateAccountCreditHint_('as-account', 'as-account-hint');
   setAddExpenseGroup(ADD_EXPENSE_GROUP);
   if (!document.getElementById('as-date').value) document.getElementById('as-date').value = todayISO();
   populateTagDatalist('as-tag-list');
@@ -11592,21 +11649,37 @@ function populateSelectFromSetup(id, list) {
   sel.innerHTML = (list || []).map(function (it) { return '<option value="' + escapeHtml(it.Name) + '">' + escapeHtml(it.Name) + '</option>'; }).join('');
 }
 
-function populateAccountSelect(id) {
+/* forceIncludeName (opsional): PENTING saat dipakai utk EDIT transaksi yang
+ * SUDAH ADA — kalau transaksi itu Account-nya kartu yang sekarang "Ditutup"
+ * (jadi difilter isAccountSelectable_), tanpa parameter ini <select> tidak
+ * akan punya opsi yang cocok, browser diam-diam fallback ke opsi PERTAMA di
+ * list, dan kalau user Save tanpa sadar, Account transaksi itu KETIMPA jadi
+ * akun lain (data rusak diam-diam, tanpa error apa pun). Dengan parameter
+ * ini, akun asli transaksinya tetap disisipkan (ditandai "(closed)") biar
+ * `.value = t.Account` di kode pemanggil selalu berhasil match. */
+function populateAccountSelect(id, forceIncludeName) {
   var sel = document.getElementById(id);
   if (!sel) return;
   var list = (STATE.data.setup.account || []).filter(isAccountSelectable_);
-  sel.innerHTML = list.map(function (a) { return '<option value="' + escapeHtml(a.Name) + '">' + escapeHtml(a.Name) + '</option>'; }).join('');
+  var html = list.map(function (a) { return '<option value="' + escapeHtml(a.Name) + '">' + escapeHtml(a.Name) + '</option>'; }).join('');
+  if (forceIncludeName && !list.some(function (a) { return a.Name === forceIncludeName; })) {
+    html += '<option value="' + escapeHtml(forceIncludeName) + '">' + escapeHtml(forceIncludeName) + ' (closed)</option>';
+  }
+  sel.innerHTML = html;
 }
 
 /* Account select khusus Pocket: opsi kosong "— (No Account)" di posisi pertama.
    Pocket tidak wajib dikaitkan ke rekening bank — tidak mempengaruhi saldo bank. */
-function populatePocketAccountSelect(id) {
+function populatePocketAccountSelect(id, forceIncludeName) {
   var sel = document.getElementById(id);
   if (!sel) return;
   var list = (STATE.data.setup.account || []).filter(isAccountSelectable_);
-  sel.innerHTML = '<option value="">— (No Account)</option>' +
+  var html = '<option value="">— (No Account)</option>' +
     list.map(function (a) { return '<option value="' + escapeHtml(a.Name) + '">' + escapeHtml(a.Name) + '</option>'; }).join('');
+  if (forceIncludeName && !list.some(function (a) { return a.Name === forceIncludeName; })) {
+    html += '<option value="' + escapeHtml(forceIncludeName) + '">' + escapeHtml(forceIncludeName) + ' (closed)</option>';
+  }
+  sel.innerHTML = html;
 }
 
 function saveAddSpending(e) {
@@ -12082,7 +12155,7 @@ function openEditTx(id) {
   }
   STATE.editTxId = id;
   document.getElementById('et-date').value = t.Date;
-  populateAccountSelect('et-account');
+  populateAccountSelect('et-account', t.Account);
   document.getElementById('et-account').value = t.Account;
   document.getElementById('et-group').value = t.Group;
   onEditGroupChange();
@@ -12997,7 +13070,7 @@ function autoSuggestCreditColor() {
   // Kode.gs) — tetap dikonfirmasi ulang server saat Save.
   if (CREDIT_EDIT_ID) return; // jangan timpa warna yang sudah dipilih saat edit
   var lender = document.getElementById('cm-lender').value.trim().toLowerCase();
-  var map = { 'bca': '#0066AE', 'cimb niaga': '#E4002B', 'bank mandiri': '#003D79', 'mandiri': '#003D79',
+  var map = { 'bca': '#0066AE', 'cimb niaga': '#E1161B', 'bank mandiri': '#003D79', 'mandiri': '#003D79',
     'bri': '#0658C2', 'bni': '#F37021', 'kredivo': '#009A5B', 'shopee paylater': '#EE4D2D',
     'shopeepaylater': '#EE4D2D', 'akulaku': '#E30016', 'gopaylater': '#00AA13', 'gopay later': '#00AA13',
     'ovo': '#4C3494', 'kredit pintar': '#0072CE' };
@@ -13924,7 +13997,7 @@ function openEditRecurringModal(id) {
   document.getElementById('recurring-modal-title').innerHTML = '<i class="fas fa-pen me-2"></i>Edit Recurring Transaction';
   document.getElementById('rc-name').value = r.Name;
   document.getElementById('rc-group').value = r.Group;
-  populateAccountSelect('rc-account');
+  populateAccountSelect('rc-account', r.Account);
   populateRecurringCategorySelect();
   document.getElementById('rc-category').value = r.Category;
   onAddSpendingCategoryChange();
@@ -15261,7 +15334,7 @@ function openEditPocket(id) {
   if (!p) return;
   EDIT_POCKET_ID = id;
   document.getElementById('ep-date').value = p.Date;
-  populatePocketAccountSelect('ep-account');
+  populatePocketAccountSelect('ep-account', p.Account);
   document.getElementById('ep-account').value = p.Account;
   document.getElementById('ep-amount').value = Number(p.Amount).toLocaleString('id-ID');
   document.getElementById('ep-note').value = p.Note || '';
