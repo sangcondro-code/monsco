@@ -108,7 +108,7 @@
     .credit-card-limit { font-size:.72rem; color:rgba(255,255,255,.8); font-weight:600; }
     .credit-card-due { position:relative; z-index:1; font-size:.72rem; color:rgba(255,255,255,.7); }
     .credit-card-actions { position:relative; z-index:1; display:flex; gap:.5rem; }
-    .credit-card-pay-btn { flex:1; border:none; border-radius:.5rem; padding:.5rem .75rem; font-weight:700; font-size:.82rem; background:rgba(255,255,255,.96); }
+    .credit-card-pay-btn { flex:1; height:30px; display:flex; align-items:center; justify-content:center; border:none; border-radius:.5rem; padding:0 .75rem; font-weight:700; font-size:.82rem; background:rgba(255,255,255,.96); }
     .credit-card-pay-btn:disabled { opacity:.45; }
     .credit-card-icon-btn { width:30px; height:30px; border-radius:.5rem; font-size:.78rem; border:none; background:rgba(255,255,255,.18); color:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
     .credit-card-icon-btn.danger { color:#fecaca; }
@@ -9363,13 +9363,14 @@ function updateClosedCreditToggleButtons_(closedCount) {
 function creditCardHtml_(a, bal, closedCard, actions) {
   var limit = Number(a.Limit) || 0;
   var color = a.Color || '#6b7280';
-  // Gradient dipertipis geradasinya (tadinya -12/-58, sekarang +6/-28) supaya
-  // warna asli bank/kartu yang dipilih user masih terlihat jelas — bukan
-  // nyaris hitam seperti sebelumnya. Tetap ada gradasi 2 nada (bukan warna
-  // solid rata) supaya masih terasa "premium", cuma dasarnya sekarang warna
-  // aslinya sendiri, bukan versi gelap ekstremnya.
-  var dark1 = shadeColor_(color, 6);
-  var dark2 = shadeColor_(color, -28);
+  // Gradasi sekarang GELAP-KE-GELAP (bukan terang-ke-gelap seperti versi
+  // sebelumnya) — kedua ujungnya lebih gelap dari warna aslinya, supaya
+  // kesan "premium"-nya datang dari KEDALAMAN warna, bukan dari kontras
+  // terang/gelap. Hue tetap dijaga persis sama di kedua titik (lihat
+  // shadeColor_ — sudah diperbaiki supaya menggelapkan dengan MENGALIKAN,
+  // bukan mengurangi, jadi rasio R:G:B tidak pernah rusak/geser warna).
+  var dark1 = shadeColor_(color, -14);
+  var dark2 = shadeColor_(color, -48);
   var usedText = rupiah(Math.abs(bal)) + (limit > 0 ? ' <span class="credit-card-limit">/ Limit ' + rupiah(limit) + '</span>' : '');
   return '' +
     '<div class="credit-premium-card' + (closedCard ? ' is-closed' : '') + '" style="background:linear-gradient(135deg,' + dark1 + ' 0%,' + dark2 + ' 100%);">' +
