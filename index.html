@@ -8332,8 +8332,8 @@ function isAccountSelectable_(a) {
   return !(a.Active === false || String(a.Active).toLowerCase() === 'false');
 }
 
-function renderMobileBank() {
-  var acc = computeAccountBalances();
+function renderMobileBank(acc) {
+  acc = acc || computeAccountBalances();
 
   setText('m-bk-total', rupiah(acc.cashTotal));
 
@@ -9368,10 +9368,10 @@ function creditAccountList_() {
   });
 }
 
-function renderMobileCredit() {
+function renderMobileCredit(acc) {
   var wrap = document.getElementById('m-credit-list');
   if (!wrap) return;
-  var acc = computeAccountBalances();
+  acc = acc || computeAccountBalances();
   var list = creditAccountList_().slice().sort(function (a, b) {
     return Math.abs(acc.balances[b.Name] || 0) - Math.abs(acc.balances[a.Name] || 0);
   });
@@ -9413,21 +9413,22 @@ function mDeleteCreditAccount(id) {
   mConfirm({
     title: 'Delete "' + a.Name + '" permanently?',
     msg: 'Can only be deleted if this card has NEVER had any transaction. If it has been used before, use "Close Card" instead — this cannot be undone.',
-    okLabel: 'Hapus', okStyle: 'danger', icon: 'trash', iconStyle: 'danger',
+    okLabel: 'Delete', okStyle: 'danger', icon: 'trash', iconStyle: 'danger',
     onOk: function () {
       showLoad('Deleting...');
       google.script.run
         .withSuccessHandler(function (res) {
           hideLoad();
-          if (!res.success) { mToast(res.message || 'Gagal menghapus.', 'error'); return; }
+          if (!res.success) { mToast(res.message || 'Failed to delete.', 'error'); return; }
           STATE.data.setup.account = STATE.data.setup.account.filter(function (x) { return x.ID !== id; });
-          renderMobileCredit();
-          if (typeof renderCredit === 'function') renderCredit();
-          if (typeof renderMobileBank === 'function') renderMobileBank();
-          if (typeof renderDashBankList === 'function') renderDashBankList();
+          var acc = computeAccountBalances();
+          renderMobileCredit(acc);
+          if (typeof renderCredit === 'function') renderCredit(acc);
+          if (typeof renderMobileBank === 'function') renderMobileBank(acc);
+          if (typeof renderDashBankList === 'function') renderDashBankList(acc);
           mToast('Deleted.', 'success');
         })
-        .withFailureHandler(function (err) { hideLoad(); mToast(err.message || 'Gagal menghapus.', 'error'); })
+        .withFailureHandler(function (err) { hideLoad(); mToast(err.message || 'Failed to delete.', 'error'); })
         .deleteCreditAccount(id);
     }
   });
@@ -9508,8 +9509,8 @@ function mAutoSuggestCreditColor() {
   colorEl.value = map[lender] || DEFAULT_CREDIT_COLOR_JS_;
 }
 var CREDIT_LENDER_COLORS_JS_ = {
-  'bca': '#005CAA', 'cimb niaga': '#7A1E1E', 'bank mandiri': '#003D79', 'mandiri': '#003D79',
-  'bri': '#00529C', 'bni': '#F37021', 'kredivo': '#009A5B', 'shopee paylater': '#EE4D2D',
+  'bca': '#0066AE', 'cimb niaga': '#E4002B', 'bank mandiri': '#003D79', 'mandiri': '#003D79',
+  'bri': '#0658C2', 'bni': '#F37021', 'kredivo': '#009A5B', 'shopee paylater': '#EE4D2D',
   'shopeepaylater': '#EE4D2D', 'akulaku': '#E30016', 'gopaylater': '#00AA13', 'gopay later': '#00AA13',
   'ovo': '#4C3494', 'kredit pintar': '#0072CE'
 };
@@ -9543,10 +9544,11 @@ function mSaveCreditSheet() {
         }
         mCloseSheet();
         mToast('Saved!', 'success');
-        renderMobileCredit();
-        if (typeof renderCredit === 'function') renderCredit();
-        if (typeof renderMobileBank === 'function') renderMobileBank();
-        if (typeof renderDashBankList === 'function') renderDashBankList();
+        var acc = computeAccountBalances();
+        renderMobileCredit(acc);
+        if (typeof renderCredit === 'function') renderCredit(acc);
+        if (typeof renderMobileBank === 'function') renderMobileBank(acc);
+        if (typeof renderDashBankList === 'function') renderDashBankList(acc);
       })
       .withFailureHandler(function (err) { hideLoad(); mToast(err.message || 'Failed.', 'error'); })
       .updateCreditAccount(payload);
@@ -9558,10 +9560,11 @@ function mSaveCreditSheet() {
         STATE.data.setup.account.push(res.record);
         mCloseSheet();
         mToast('Saved!', 'success');
-        renderMobileCredit();
-        if (typeof renderCredit === 'function') renderCredit();
-        if (typeof renderMobileBank === 'function') renderMobileBank();
-        if (typeof renderDashBankList === 'function') renderDashBankList();
+        var acc = computeAccountBalances();
+        renderMobileCredit(acc);
+        if (typeof renderCredit === 'function') renderCredit(acc);
+        if (typeof renderMobileBank === 'function') renderMobileBank(acc);
+        if (typeof renderDashBankList === 'function') renderDashBankList(acc);
       })
       .withFailureHandler(function (err) { hideLoad(); mToast(err.message || 'Failed.', 'error'); })
       .addCreditAccount(payload);
@@ -9597,16 +9600,17 @@ function mCloseCreditAccount(id) {
       google.script.run
         .withSuccessHandler(function (res) {
           hideLoad();
-          if (!res.success) { mToast(res.message || 'Gagal.', 'error'); return; }
+          if (!res.success) { mToast(res.message || 'Failed.', 'error'); return; }
           var idx = STATE.data.setup.account.findIndex(function (x) { return x.ID === id; });
           if (idx > -1) STATE.data.setup.account[idx].Active = false;
-          renderMobileCredit();
-          if (typeof renderCredit === 'function') renderCredit();
-          if (typeof renderMobileBank === 'function') renderMobileBank();
-          if (typeof renderDashBankList === 'function') renderDashBankList();
+          var acc = computeAccountBalances();
+          renderMobileCredit(acc);
+          if (typeof renderCredit === 'function') renderCredit(acc);
+          if (typeof renderMobileBank === 'function') renderMobileBank(acc);
+          if (typeof renderDashBankList === 'function') renderDashBankList(acc);
           mToast('Card closed.', 'success');
         })
-        .withFailureHandler(function (err) { hideLoad(); mToast(err.message || 'Gagal.', 'error'); })
+        .withFailureHandler(function (err) { hideLoad(); mToast(err.message || 'Failed.', 'error'); })
         .setCreditAccountActive(id, false, bal);
     }
   });
@@ -9618,16 +9622,17 @@ function mReopenCreditAccount(id) {
   google.script.run
     .withSuccessHandler(function (res) {
       hideLoad();
-      if (!res.success) { mToast(res.message || 'Gagal.', 'error'); return; }
+      if (!res.success) { mToast(res.message || 'Failed.', 'error'); return; }
       var idx = STATE.data.setup.account.findIndex(function (x) { return x.ID === id; });
       if (idx > -1) STATE.data.setup.account[idx].Active = true;
-      renderMobileCredit();
-      if (typeof renderCredit === 'function') renderCredit();
-      if (typeof renderMobileBank === 'function') renderMobileBank();
-      if (typeof renderDashBankList === 'function') renderDashBankList();
+      var acc = computeAccountBalances();
+      renderMobileCredit(acc);
+      if (typeof renderCredit === 'function') renderCredit(acc);
+      if (typeof renderMobileBank === 'function') renderMobileBank(acc);
+      if (typeof renderDashBankList === 'function') renderDashBankList(acc);
       mToast('Card reopened.', 'success');
     })
-    .withFailureHandler(function (err) { hideLoad(); mToast(err.message || 'Gagal.', 'error'); })
+    .withFailureHandler(function (err) { hideLoad(); mToast(err.message || 'Failed.', 'error'); })
     .setCreditAccountActive(id, true, 0);
 }
 
@@ -10964,10 +10969,10 @@ function renderDashIncomeExpenseChart() {
 /* Bank Accounts panel — dibungkus kartu putih dengan tinggi yang sama
    dengan kartu chart Income vs Expense di sebelahnya (lihat HTML: keduanya
    h-100 dalam row yang sama, area isi sama-sama 280px dengan scroll). */
-function renderDashBankList() {
+function renderDashBankList(acc) {
   var wrap = document.getElementById('dash-bank-list');
   if (!wrap) return;
-  var acc = computeAccountBalances();
+  acc = acc || computeAccountBalances();
   var accountsByName = {};
   (STATE.data.setup.account || []).forEach(function (a) { accountsByName[a.Name] = a; });
 
@@ -12889,10 +12894,10 @@ function renderDebt() {
 var PRESET_TRANSFER_TO_ = null;
 var PRESET_TRANSFER_NOTE_ = null;
 
-function renderCredit() {
+function renderCredit(acc) {
   var wrap = document.getElementById('credit-cards-wrap');
   if (!wrap) return;
-  var acc = computeAccountBalances();
+  acc = acc || computeAccountBalances();
   var list = creditAccountList_().slice().sort(function (a, b) {
     return Math.abs(acc.balances[b.Name] || 0) - Math.abs(acc.balances[a.Name] || 0);
   });
@@ -12914,7 +12919,7 @@ function renderCredit() {
         '<button class="credit-card-icon-btn" onclick="openEditCreditModal(\'' + a.ID + '\')" title="Edit"><i class="fas fa-pen"></i></button>' +
         '<button class="credit-card-icon-btn" onclick="closeCreditAccountDesktop(\'' + a.ID + '\')" title="Close Card"><i class="fas fa-lock"></i></button>' +
         '<button class="credit-card-icon-btn danger" onclick="deleteCreditAccountDesktop(\'' + a.ID + '\')" title="Delete"><i class="fas fa-trash"></i></button>';
-    return '<div class="col-12 col-md-6 col-xl-4">' + creditCardHtml_(a, bal, closedCard, actions) + '</div>';
+    return '<div class="col-12 col-sm-6 col-lg-4 col-xl-3">' + creditCardHtml_(a, bal, closedCard, actions) + '</div>';
   }
 
   updateClosedCreditToggleButtons_(closed.length);
@@ -12932,7 +12937,7 @@ function deleteCreditAccountDesktop(id) {
   Swal.fire({
     title: 'Delete "' + a.Name + '" permanently?',
     text: 'Can only be deleted if this card has NEVER had any transaction. If it has been used before, use "Close Card" instead — this cannot be undone.',
-    icon: 'warning', showCancelButton: true, confirmButtonText: 'Hapus', confirmButtonColor: '#dc2626'
+    icon: 'warning', showCancelButton: true, confirmButtonText: 'Delete', confirmButtonColor: '#dc2626'
   }).then(function (r) {
     if (!r.isConfirmed) return;
     showLoad('Deleting...');
@@ -12941,9 +12946,10 @@ function deleteCreditAccountDesktop(id) {
         hideLoad();
         if (!res.success) { Swal.fire('Error', res.message, 'error'); return; }
         STATE.data.setup.account = STATE.data.setup.account.filter(function (x) { return x.ID !== id; });
-        renderCredit();
-        if (typeof renderMobileCredit === 'function') renderMobileCredit();
-        renderDashBankList();
+        var acc = computeAccountBalances();
+        renderCredit(acc);
+        if (typeof renderMobileCredit === 'function') renderMobileCredit(acc);
+        renderDashBankList(acc);
         Swal.fire({ icon: 'success', title: 'Deleted', timer: 1000, showConfirmButton: false });
       })
       .withFailureHandler(function (err) { hideLoad(); Swal.fire('Error', err.message, 'error'); })
@@ -12991,8 +12997,8 @@ function autoSuggestCreditColor() {
   // Kode.gs) — tetap dikonfirmasi ulang server saat Save.
   if (CREDIT_EDIT_ID) return; // jangan timpa warna yang sudah dipilih saat edit
   var lender = document.getElementById('cm-lender').value.trim().toLowerCase();
-  var map = { 'bca': '#005CAA', 'cimb niaga': '#7A1E1E', 'bank mandiri': '#003D79', 'mandiri': '#003D79',
-    'bri': '#00529C', 'bni': '#F37021', 'kredivo': '#009A5B', 'shopee paylater': '#EE4D2D',
+  var map = { 'bca': '#0066AE', 'cimb niaga': '#E4002B', 'bank mandiri': '#003D79', 'mandiri': '#003D79',
+    'bri': '#0658C2', 'bni': '#F37021', 'kredivo': '#009A5B', 'shopee paylater': '#EE4D2D',
     'shopeepaylater': '#EE4D2D', 'akulaku': '#E30016', 'gopaylater': '#00AA13', 'gopay later': '#00AA13',
     'ovo': '#4C3494', 'kredit pintar': '#0072CE' };
   document.getElementById('cm-color').value = map[lender] || '#6b7280';
@@ -13026,9 +13032,10 @@ function saveCreditModal() {
           });
         }
         bootstrap.Modal.getInstance(document.getElementById('modal-credit')).hide();
-        renderCredit();
-        if (typeof renderMobileCredit === 'function') renderMobileCredit();
-        renderDashBankList();
+        var acc = computeAccountBalances();
+        renderCredit(acc);
+        if (typeof renderMobileCredit === 'function') renderMobileCredit(acc);
+        renderDashBankList(acc);
         Swal.fire({ icon: 'success', title: 'Saved!', timer: 1200, showConfirmButton: false });
       })
       .withFailureHandler(function (err) { hideLoad(); Swal.fire('Error', err.message, 'error'); })
@@ -13040,9 +13047,10 @@ function saveCreditModal() {
         if (!res.success) { Swal.fire('Error', res.message, 'error'); return; }
         STATE.data.setup.account.push(res.record);
         bootstrap.Modal.getInstance(document.getElementById('modal-credit')).hide();
-        renderCredit();
-        if (typeof renderMobileCredit === 'function') renderMobileCredit();
-        renderDashBankList();
+        var acc = computeAccountBalances();
+        renderCredit(acc);
+        if (typeof renderMobileCredit === 'function') renderMobileCredit(acc);
+        renderDashBankList(acc);
         Swal.fire({ icon: 'success', title: 'Saved!', timer: 1200, showConfirmButton: false });
       })
       .withFailureHandler(function (err) { hideLoad(); Swal.fire('Error', err.message, 'error'); })
@@ -13086,9 +13094,10 @@ function closeCreditAccountDesktop(id) {
         if (!res.success) { Swal.fire('Error', res.message, 'error'); return; }
         var idx = STATE.data.setup.account.findIndex(function (x) { return x.ID === id; });
         if (idx > -1) STATE.data.setup.account[idx].Active = false;
-        renderCredit();
-        if (typeof renderMobileCredit === 'function') renderMobileCredit();
-        renderDashBankList();
+        var acc = computeAccountBalances();
+        renderCredit(acc);
+        if (typeof renderMobileCredit === 'function') renderMobileCredit(acc);
+        renderDashBankList(acc);
         Swal.fire({ icon: 'success', title: 'Card closed', timer: 1200, showConfirmButton: false });
       })
       .withFailureHandler(function (err) { hideLoad(); Swal.fire('Error', err.message, 'error'); })
@@ -13105,9 +13114,10 @@ function reopenCreditAccountDesktop(id) {
       if (!res.success) { Swal.fire('Error', res.message, 'error'); return; }
       var idx = STATE.data.setup.account.findIndex(function (x) { return x.ID === id; });
       if (idx > -1) STATE.data.setup.account[idx].Active = true;
-      renderCredit();
-      if (typeof renderMobileCredit === 'function') renderMobileCredit();
-      renderDashBankList();
+      var acc = computeAccountBalances();
+      renderCredit(acc);
+      if (typeof renderMobileCredit === 'function') renderMobileCredit(acc);
+      renderDashBankList(acc);
       Swal.fire({ icon: 'success', title: 'Card reopened', timer: 1200, showConfirmButton: false });
     })
     .withFailureHandler(function (err) { hideLoad(); Swal.fire('Error', err.message, 'error'); })
