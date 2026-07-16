@@ -159,6 +159,12 @@
        supaya berlaku juga di halaman Login, bukan cuma Dashboard. */
     html, body { overscroll-behavior: none; }
     body { font-family:'Segoe UI',sans-serif; background:#f3f4f6; font-size:.88rem; overflow-x:hidden; }
+    /* BUG FIX: lihat catatan panjang di GAS-Index.html pada baris yang sama —
+       tag <b>/<strong> tanpa font-weight eksplisit ikut memakai default
+       browser "bolder" (RELATIF terhadap induknya, bisa jadi 900 di dalam
+       container yang sudah font-weight:700), bukan 700 tetap. Diseragamkan
+       di sini juga supaya kedua frontend (GAS & GitHub Pages) selalu identik. */
+    b, strong { font-weight:700; }
 
     /* ===== LOGIN ===== */
     #login-section { position:fixed; inset:0; background:#f7f9fc; display:flex; z-index:9999; }
@@ -440,9 +446,9 @@
     .bud-rollover-summary-title { font-weight:700; font-size:.92rem; color:#1f2937; margin-bottom:.9rem; display:flex; align-items:center; gap:8px; }
     .bud-rollover-summary-title i { color:#0284c7; }
     .bud-rollover-summary-row { display:flex; justify-content:space-between; font-size:.85rem; color:#4b5563; padding:.35rem 0; }
-    .bud-rollover-summary-row b { color:#1f2937; }
+    .bud-rollover-summary-row b { color:#1f2937; font-weight:700; }
     .bud-rollover-summary-total { border-top:1px solid #eef1f5; margin-top:.3rem; padding-top:.6rem; font-weight:700; }
-    .bud-rollover-summary-total b { color:#0284c7; font-size:.95rem; }
+    .bud-rollover-summary-total b { color:#0284c7; font-size:.95rem; font-weight:700; }
     .bud-rollover-btn-wide { width:100%; justify-content:center; padding:.7rem 0; font-size:.85rem; margin-top:1rem; }
 
     .bud-rollover-done-banner { display:flex; align-items:center; gap:12px; }
@@ -10506,6 +10512,8 @@ function renderMobileBudRolloverSummary() {
   var status = getRolloverStatusForMonth_(STATE.year, BUD_MONTH);
   if (status) {
     var destLabel = status.dest === 'income' ? ('Income (' + escapeHtml(status.category) + ')') : ('Pocket (' + escapeHtml(status.category) + ')');
+    // BARU: sama seperti versi desktop (renderBudRolloverSummary) — breakdown
+    // lengkap ditambahkan di bawah banner "sudah di-rollover".
     wrap.innerHTML = '<div class="m-bud-rollover-summary-card">' +
       '<div class="bud-rollover-done-banner">' +
         '<i class="fas fa-circle-check"></i>' +
@@ -10514,6 +10522,10 @@ function renderMobileBudRolloverSummary() {
           '<div class="bud-rollover-done-sub">' + rupiah(status.amount) + ' added in ' + status.targetLabel + '</div>' +
         '</div>' +
       '</div>' +
+      '<div class="bud-rollover-summary-row" style="margin-top:10px;"><span>Needs remaining</span><b>' + rupiah(status.needsTotal) + '</b></div>' +
+      '<div class="bud-rollover-summary-row"><span>Wants remaining</span><b>' + rupiah(status.wantsTotal) + '</b></div>' +
+      '<div class="bud-rollover-summary-row"><span>Total rollover (to ' + (status.dest === 'income' ? 'Income' : 'Pocket') + ')</span><b>' + rupiah(status.amount) + '</b></div>' +
+      '<div class="bud-rollover-summary-row bud-rollover-summary-total"><span>Remaining Balance</span><b>' + rupiah(status.remainingBalance) + '</b></div>' +
     '</div>';
     return;
   }
@@ -10789,22 +10801,26 @@ function onRolloverAllBudgetMobile() {
   });
 }
 
-/* Hitung daftar kategori (Group tertentu) yang masih punya sisa budget bulan
-   ini (Planned - Actual > 0). Mengikuti persis logika "Debt/Installment
-   auto-suggested" yang dipakai saat render (lihat renderBudExpenseSection),
-   supaya total yang ditampilkan di ringkasan Rollover SELALU sama dengan
-   angka "Remaining" yang sedang tampil di tabel/kartu. Dipakai untuk
-   menghitung total per grup (Needs/Wants) yang digabung jadi satu angka
-   di renderBudRolloverSummary() / onRolloverAllBudget(). */
-function computeBudgetLeftoverItems_(group) {
+/* Hitung daftar kategori (Group tertentu) yang masih punya sisa budget PADA
+   BULAN TERTENTU (Planned - Actual > 0). Mengikuti persis logika
+   "Debt/Installment auto-suggested" yang dipakai saat render (lihat
+   renderBudExpenseSection), supaya total yang ditampilkan di ringkasan
+   Rollover SELALU sama dengan angka "Remaining" yang sedang tampil di
+   tabel/kartu. Diparameterkan lewat `month` (bukan langsung pakai BUD_MONTH
+   global) supaya bisa dipakai untuk MENGHITUNG ULANG bulan LAIN yang sedang
+   TIDAK dibuka di Budgeting saat ini — dipakai getRolloverStatusForMonth_()
+   untuk menampilkan info Needs/Wants remaining bulan sumber yang sudah
+   di-rollover, kapan pun bulan itu dibuka lagi (bukan cuma tepat setelah
+   rollover dilakukan). */
+function computeBudgetLeftoverItemsForMonth_(group, month) {
   var list = group === 'Needs' ? STATE.data.setup.needs : STATE.data.setup.wants;
-  var monthTx = STATE.data.transactions.filter(function (t) { return Number(t.Month) === BUD_MONTH; });
+  var monthTx = STATE.data.transactions.filter(function (t) { return Number(t.Month) === month; });
   var debtInstallmentSuggestion = (STATE.data.debts || [])
     .filter(function (d) { return d.Type !== 'Receivable' && Number(d.CurrentBalance) > 0; })
     .reduce(function (s, d) { return s + (Number(d.MinPayment) || 0); }, 0);
   var items = [];
   (list || []).forEach(function (item) {
-    var existing = STATE.data.budget.find(function (b) { return Number(b.Month) === BUD_MONTH && b.Group === group && b.Category === item.Name; });
+    var existing = STATE.data.budget.find(function (b) { return Number(b.Month) === month && b.Group === group && b.Category === item.Name; });
     var planned = existing ? Number(existing.PlannedAmount) : 0;
     if (!existing && item.Name === 'Debt/Installment' && debtInstallmentSuggestion > 0) planned = debtInstallmentSuggestion;
     if (planned <= 0) return;
@@ -10814,6 +10830,13 @@ function computeBudgetLeftoverItems_(group) {
     if (leftover > 0) items.push({ category: item.Name, amount: leftover });
   });
   return items;
+}
+
+/* Versi lama, khusus bulan yang SEDANG dibuka di Budgeting (BUD_MONTH) —
+   dipertahankan sebagai wrapper tipis supaya semua pemanggil yang sudah ada
+   tidak perlu diubah. */
+function computeBudgetLeftoverItems_(group) {
+  return computeBudgetLeftoverItemsForMonth_(group, BUD_MONTH);
 }
 
 /* ==================================================================
@@ -10874,8 +10897,21 @@ function promptRolloverRemainingToIncome(opts) {
     html:
       '<div style="text-align:left;font-size:.85rem;">' +
         '<div style="text-align:center;background:#f0f9ff;border:1px solid #bae6fd;border-radius:12px;padding:14px 10px;margin-bottom:14px;">' +
-          '<div style="font-size:.68rem;font-weight:700;color:#0284c7;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;">Amount to roll over</div>' +
-          '<div style="font-size:1.6rem;font-weight:700;color:#0284c7;line-height:1.2;">' + rupiah(opts.amount) + '</div>' +
+          '<div style="font-size:.68rem;font-weight:700;color:#0284c7;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;">Amount to roll over</div>' +
+          // BARU: dulu angka ini cuma ditampilkan (tidak bisa diubah) — SELALU
+          // menggerakkan seluruh sisa budget bulan itu. Sekarang jadi input
+          // yang bisa diedit manual (mis. sengaja hanya rollover Rp 3.000.000
+          // dari total tersedia Rp 3.001.973) — sisanya yang TIDAK ikut
+          // dirollover tetap dihitung & ditampilkan sebagai "Remaining
+          // Balance" begitu bulan sumber ini dibuka lagi (lihat
+          // getRolloverStatusForMonth_ & renderBudRolloverSummary).
+          '<div style="display:flex;align-items:center;justify-content:center;gap:6px;">' +
+            '<span style="font-size:1.25rem;font-weight:700;color:#0284c7;">Rp</span>' +
+            '<input type="text" id="ro-amount" inputmode="numeric" value="' + Math.round(opts.amount).toLocaleString('id-ID') + '" ' +
+              'oninput="bindRupiahInputEvent(this)" ' +
+              'style="border:1px solid #bae6fd;border-radius:8px;background:#fff;color:#0284c7;font-size:1.25rem;font-weight:700;text-align:right;width:170px;padding:5px 10px;">' +
+          '</div>' +
+          '<div style="font-size:.7rem;color:#94a1b2;margin-top:5px;">Available this month: ' + rupiah(opts.amount) + '</div>' +
           '<div style="font-size:.72rem;color:#64748b;margin-top:4px;">from <b>' + sourceLabel + '</b> \u2192 into <b>' + targetLabel + '</b></div>' +
         '</div>' +
         '<div style="font-weight:600;font-size:.78rem;margin-bottom:6px;color:#374151;">Where should it go?</div>' +
@@ -10895,7 +10931,7 @@ function promptRolloverRemainingToIncome(opts) {
         '</div>' +
       '</div>',
     showCancelButton: true,
-    confirmButtonText: 'Rollover ' + rupiah(opts.amount),
+    confirmButtonText: 'Confirm Rollover',
     confirmButtonColor: '#0284c7',
     focusConfirm: false,
     didOpen: function () {
@@ -10918,13 +10954,31 @@ function promptRolloverRemainingToIncome(opts) {
       applyDest();
     },
     preConfirm: function () {
-      if (ROLLOVER_DEST_ === 'income') {
-        return { dest: 'income', incomeCategory: document.getElementById('ro-income-cat').value, account: document.getElementById('ro-account').value };
+      // BARU: validasi amount hasil edit user — harus > 0 dan tidak boleh
+      // melebihi total yang benar-benar tersedia bulan itu (opts.amount).
+      // Boleh KURANG dari itu (itu justru fitur yang diminta — rollover
+      // sebagian, sisanya tetap kehitung sebagai Remaining Balance nanti).
+      var amountEl = document.getElementById('ro-amount');
+      var chosenAmount = rawNumber(amountEl);
+      if (!chosenAmount || chosenAmount <= 0) {
+        Swal.showValidationMessage('Please enter a rollover amount greater than 0.');
+        return false;
       }
-      return { dest: 'pocket', pocketCategory: document.getElementById('ro-pocket-cat').value };
+      if (chosenAmount > opts.amount) {
+        Swal.showValidationMessage('Amount can\'t be more than what\'s available this month (' + rupiah(opts.amount) + ').');
+        return false;
+      }
+      if (ROLLOVER_DEST_ === 'income') {
+        return { dest: 'income', amount: chosenAmount, incomeCategory: document.getElementById('ro-income-cat').value, account: document.getElementById('ro-account').value };
+      }
+      return { dest: 'pocket', amount: chosenAmount, pocketCategory: document.getElementById('ro-pocket-cat').value };
     }
   }).then(function (result) {
     if (!result.isConfirmed) return;
+    // BARU: pakai amount yang DIPILIH user (bisa lebih kecil dari
+    // opts.amount), bukan opts.amount langsung — itulah yang benar-benar
+    // dikirim ke backend & ditampilkan di pesan sukses.
+    var chosenAmount = result.value.amount;
     showLoad('Rolling over...');
     if (result.value.dest === 'pocket') {
       google.script.run
@@ -10934,14 +10988,14 @@ function promptRolloverRemainingToIncome(opts) {
           applySavingsBalance(res.savingsCategory, res.savingsBalance);
           var inYearP = mAcceptTxYearOrWarn_(res.targetYear);
           if (inYearP && res.record) (STATE.data.pocket = STATE.data.pocket || []).push(res.record); // BUG FIX: tanpa ini, banner "Rolled over" baru muncul setelah reload, bukan langsung
-          Swal.fire({ icon: 'success', title: 'Rolled over!', text: rupiah(opts.amount) + ' added to ' + escapeHtml(result.value.pocketCategory) + ' in ' + targetLabel + '.', timer: 2600, showConfirmButton: false });
+          Swal.fire({ icon: 'success', title: 'Rolled over!', text: rupiah(chosenAmount) + ' added to ' + escapeHtml(result.value.pocketCategory) + ' in ' + targetLabel + '.', timer: 2600, showConfirmButton: false });
           if (typeof renderGeneralSavings === 'function') renderGeneralSavings();
           if (typeof opts.onDone === 'function') opts.onDone();
         })
         .withFailureHandler(function (err) { hideLoad(); Swal.fire('Error', err.message, 'error'); })
         .rolloverMonthRemainingToPocket({
           sourceYear: opts.sourceYear, sourceMonth: opts.sourceMonth,
-          pocketCategory: result.value.pocketCategory, amount: opts.amount
+          pocketCategory: result.value.pocketCategory, amount: chosenAmount
         });
       return;
     }
@@ -10951,13 +11005,13 @@ function promptRolloverRemainingToIncome(opts) {
         if (!res.success) { Swal.fire('Error', res.message, 'error'); return; }
         var inYear = mAcceptTxYearOrWarn_(res.targetYear);
         if (inYear) STATE.data.transactions.push(res.record);
-        Swal.fire({ icon: 'success', title: 'Rolled over!', text: rupiah(opts.amount) + ' added as Income in ' + targetLabel + '.', timer: 2600, showConfirmButton: false });
+        Swal.fire({ icon: 'success', title: 'Rolled over!', text: rupiah(chosenAmount) + ' added as Income in ' + targetLabel + '.', timer: 2600, showConfirmButton: false });
         if (typeof opts.onDone === 'function') opts.onDone();
       })
       .withFailureHandler(function (err) { hideLoad(); Swal.fire('Error', err.message, 'error'); })
       .rolloverMonthRemainingToIncome({
         sourceYear: opts.sourceYear, sourceMonth: opts.sourceMonth,
-        incomeCategory: result.value.incomeCategory, account: result.value.account, amount: opts.amount
+        incomeCategory: result.value.incomeCategory, account: result.value.account, amount: chosenAmount
       });
   });
 }
@@ -12350,17 +12404,36 @@ function getRolloverStatusForMonth_(sourceYear, sourceMonth) {
   var marker = 'Remaining Budget in ' + MONTH_NAMES[sourceMonth - 1] + ' ' + sourceYear;
   var targetLabel = MONTH_NAMES[target.targetMonth - 1] + ' ' + target.targetYear;
 
+  var dest = null, rolledAmount = null, category = null;
   var incomeTx = (STATE.data.transactions || []).find(function (t) {
     return t.Group === 'Income' && t.Tag === 'Budget Rollover' && String(t.Note) === marker;
   });
-  if (incomeTx) return { dest: 'income', amount: Number(incomeTx.Amount), category: incomeTx.Category, targetLabel: targetLabel };
+  if (incomeTx) { dest = 'income'; rolledAmount = Number(incomeTx.Amount); category = incomeTx.Category; }
 
-  var pocketEntry = (STATE.data.pocket || []).find(function (p) {
-    return p.Type === 'Deposit' && String(p.Note) === marker;
-  });
-  if (pocketEntry) return { dest: 'pocket', amount: Number(pocketEntry.Amount), category: pocketEntry.Category, targetLabel: targetLabel };
+  if (!dest) {
+    var pocketEntry = (STATE.data.pocket || []).find(function (p) {
+      return p.Type === 'Deposit' && String(p.Note) === marker;
+    });
+    if (pocketEntry) { dest = 'pocket'; rolledAmount = Number(pocketEntry.Amount); category = pocketEntry.Category; }
+  }
+  if (!dest) return null;
 
-  return null;
+  // BARU: hitung ULANG Needs/Wants remaining bulan SUMBER (bukan bulan yang
+  // sedang dibuka di Budgeting saat ini — lihat computeBudgetLeftoverItemsForMonth_)
+  // + Remaining Balance (bagian yang TIDAK ikut di-rollover, kalau user
+  // sengaja rollover kurang dari total yang tersedia lewat input "Amount to
+  // roll over" yang sekarang bisa diubah manual di promptRolloverRemainingToIncome).
+  // Supaya info ini tetap akurat kapan pun bulan sumber ini dibuka lagi, bukan
+  // cuma sesaat setelah rollover terjadi.
+  var needsTotal = computeBudgetLeftoverItemsForMonth_('Needs', sourceMonth).reduce(function (s, it) { return s + it.amount; }, 0);
+  var wantsTotal = computeBudgetLeftoverItemsForMonth_('Wants', sourceMonth).reduce(function (s, it) { return s + it.amount; }, 0);
+  var grandTotal = needsTotal + wantsTotal;
+
+  return {
+    dest: dest, amount: rolledAmount, category: category, targetLabel: targetLabel,
+    needsTotal: needsTotal, wantsTotal: wantsTotal, grandTotal: grandTotal,
+    remainingBalance: Math.max(0, grandTotal - rolledAmount)
+  };
 }
 
 function renderBudRolloverSummary() {
@@ -12371,6 +12444,13 @@ function renderBudRolloverSummary() {
   var status = getRolloverStatusForMonth_(STATE.year, BUD_MONTH);
   if (status) {
     var destLabel = status.dest === 'income' ? ('Income (' + escapeHtml(status.category) + ')') : ('Pocket (' + escapeHtml(status.category) + ')');
+    // BARU: dulu banner ini cuma bilang "sudah di-rollover, sekian, ke bulan
+    // sekian" — sekarang ditambah breakdown lengkap (Needs/Wants remaining
+    // bulan ini, Total rollover yang BENAR-BENAR dikirim — bisa kurang dari
+    // total kalau user sengaja mengurangi angkanya di dialog Rollover — dan
+    // Remaining Balance = sisa yang TIDAK ikut di-rollover), supaya info ini
+    // tetap kelihatan kapan pun bulan ini dibuka lagi, bukan cuma sesaat
+    // setelah rollover dilakukan.
     return '' +
       '<div class="card mb-4"><div class="card-body">' +
         '<div class="bud-rollover-done-banner">' +
@@ -12380,6 +12460,10 @@ function renderBudRolloverSummary() {
             '<div class="bud-rollover-done-sub">' + rupiah(status.amount) + ' added in ' + status.targetLabel + '</div>' +
           '</div>' +
         '</div>' +
+        '<div class="bud-rollover-summary-row" style="margin-top:10px;"><span>Needs remaining</span><b>' + rupiah(status.needsTotal) + '</b></div>' +
+        '<div class="bud-rollover-summary-row"><span>Wants remaining</span><b>' + rupiah(status.wantsTotal) + '</b></div>' +
+        '<div class="bud-rollover-summary-row"><span>Total rollover (to ' + (status.dest === 'income' ? 'Income' : 'Pocket') + ')</span><b>' + rupiah(status.amount) + '</b></div>' +
+        '<div class="bud-rollover-summary-row bud-rollover-summary-total"><span>Remaining Balance</span><b>' + rupiah(status.remainingBalance) + '</b></div>' +
       '</div></div>';
   }
 
