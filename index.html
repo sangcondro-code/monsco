@@ -9399,18 +9399,16 @@ function creditCardHtml_(a, bal, closedCard, actions) {
  * Ini CUMA hint visual — TIDAK mengubah Note atau field lain apa pun.
  * Dipakai bersama desktop & mobile (sama seperti creditCardHtml_ dkk). */
 function updateAccountCreditHint_(selectId, hintId) {
-  var sel = document.getElementById(selectId);
+  // SENGAJA DIMATIKAN (permintaan user, 19 Jul 2026): teks hint "This adds to
+  // ... balance — it won't deduct..." di bawah Account field pada Add Spending
+  // dihilangkan supaya form tetap seamless. Elemen hint dibiarkan selalu
+  // kosong & tersembunyi. Fungsi ini TETAP dipertahankan (tidak dihapus)
+  // karena masih dipanggil dari onchange Account field di Add Spending
+  // (desktop & mobile) — hapus total fungsinya akan bikin onchange itu error.
   var hint = document.getElementById(hintId);
-  if (!sel || !hint) return;
-  var a = (STATE.data.setup.account || []).find(function (x) { return x.Name === sel.value; });
-  var isCredit = a && (a.Type === 'Credit Card' || a.Type === 'Paylater');
-  if (isCredit) {
-    hint.style.display = '';
-    hint.innerHTML = '<i class="fas fa-credit-card me-1"></i>This adds to <b>' + escapeHtml(a.Name) + '</b>\'s balance — it won\'t deduct from a bank account until you pay the bill.';
-  } else {
-    hint.style.display = 'none';
-    hint.innerHTML = '';
-  }
+  if (!hint) return;
+  hint.style.display = 'none';
+  hint.innerHTML = '';
 }
 
 /* Sama seperti updateAccountCreditHint_, tapi khusus utk form Transfer
