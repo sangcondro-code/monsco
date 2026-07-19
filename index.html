@@ -17318,5 +17318,27 @@ mUpdateLoginBiometricButton();
 window.addEventListener('resize', mUpdateLoginBiometricButton);
 </script>
 
+<!-- PERF: daftarkan service worker (sw.js) — HANYA meng-cache library CDN
+     vendor (Bootstrap/FontAwesome/SweetAlert2/Chart.js) & ikon statis milik
+     app sendiri, supaya kunjungan berikutnya (termasuk tiap kali dibuka dari
+     ikon "Add to Home Screen") tidak perlu tunggu CDN lagi -> app terasa
+     lebih ringan/cepat dibuka, TANPA mengubah tampilan apa pun. HTML halaman
+     ini & semua request RPC ke script.google.com (baca/tulis data) SENGAJA
+     TIDAK ikut di-cache — lihat komentar lengkap di sw.js. Dibungkus
+     feature-detect + try/catch supaya 100% aman: kalau browser/konteksnya
+     tidak mendukung service worker (mis. browser lama), baris ini diam-diam
+     tidak melakukan apa-apa, app tetap jalan normal seperti biasa. -->
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      try {
+        navigator.serviceWorker.register('sw.js').catch(function (e) {
+          console.warn('SW register failed (non-fatal):', e);
+        });
+      } catch (e) { /* diam-diam abaikan — bukan fitur wajib */ }
+    });
+  }
+</script>
+
 </body>
 </html>
