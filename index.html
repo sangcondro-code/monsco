@@ -429,6 +429,46 @@
     .bud-section-head .section-title { margin-bottom:0; }
     .bud-actions { display:flex; align-items:center; gap:8px; }
 
+    /* ===== BUDGETING — Yearly overview (desktop only, mobile is untouched) ===== */
+    .bud-view-toggle { display:inline-flex; border:1px solid var(--brand); border-radius:.5rem; overflow:hidden; }
+    .bud-view-toggle button { border:none; background:#fff; color:var(--brand); font-size:.78rem; font-weight:700; padding:6px 16px; cursor:pointer; transition:.15s; }
+    .bud-view-toggle button:hover { background:var(--brand-light); }
+    .bud-view-toggle button.active { background:var(--brand); color:#fff; }
+
+    .bud-year-section { margin-bottom:1.5rem; }
+    .bud-year-section .card { overflow:hidden; } /* keeps all 4 corners cleanly rounded — .card has no overflow rule by default, so square table corners were poking past the rounded card corners */
+    .bud-year-wrap { overflow-x:auto; }
+    table.bud-year-tbl { table-layout:fixed; border-collapse:separate; border-spacing:0; width:100%; min-width:1150px; } /* no font-size override — inherits body's .88rem, matching .tbl td used by the Monthly view */
+    table.bud-year-tbl th:first-child, table.bud-year-tbl td:first-child { width:16%; }
+    table.bud-year-tbl th:not(:first-child), table.bud-year-tbl td:not(:first-child) { width:7%; }
+    table.bud-year-tbl thead th { padding:10px 10px; font-size:.75rem; text-transform:uppercase; letter-spacing:.6px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:right; border:none; border-radius:0; } /* matches .tbl th exactly */
+    table.bud-year-tbl thead th:first-child { text-align:left; position:sticky; left:0; z-index:2; }
+    table.bud-year-tbl thead th.cur { background:var(--brand) !important; color:#fff !important; }
+    table.bud-year-tbl td { padding:8px 10px; text-align:right; border-bottom:1px solid #f3f4f6; color:#374151; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; border-radius:0; }
+    table.bud-year-tbl td:first-child { text-align:left; position:sticky; left:0; background:#fff; z-index:1; font-weight:600; color:#111; overflow:visible; }
+    table.bud-year-tbl td.bud-cat-name { display:flex; align-items:center; gap:8px; }
+    table.bud-year-tbl tbody tr:hover td { background:#fafafa; }
+    table.bud-year-tbl tbody tr:hover td:first-child { background:#f3f4f6; }
+    table.bud-year-tbl tr.bud-year-total td { font-weight:700; border-top:2px solid #e5e7eb; }
+    table.bud-year-tbl td.cur { background:var(--brand-light); font-weight:700; }
+    table.bud-year-tbl tr.bud-year-total td.cur { background:#dbe9f7; }
+
+    .bud-year-tbl thead { background:var(--brand); color:#fff; }
+    .bud-cat-dot { display:inline-block; width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+
+    .bud-cell-editable { cursor:pointer; }
+    .bud-cell-editable:hover { background:#eef2f7; }
+    /* Status is drawn as a fixed 3px border on the cell itself (not a separate inner
+       element) so every row gets the exact same thickness, regardless of the amount's
+       digit count or the cell's width. */
+    td.bud-status-ok, table.bud-year-tbl td.bud-status-ok { border-bottom:3px solid #16a34a; }
+    td.bud-status-warn, table.bud-year-tbl td.bud-status-warn { border-bottom:3px solid #f59e0b; }
+    td.bud-status-over, table.bud-year-tbl td.bud-status-over { border-bottom:3px solid #dc2626; }
+
+    .bud-year-legend { display:flex; gap:16px; font-size:.72rem; color:#6b7280; padding:0 1rem 1rem; }
+    .bud-year-legend span { display:flex; align-items:center; gap:5px; }
+    .bud-year-legend i { display:inline-block; width:8px; height:8px; border-radius:2px; }
+
     .bud-edit-toggle { display:inline-flex; align-items:center; gap:6px; padding:6px 14px; font-size:.78rem; font-weight:700; border-radius:.5rem; border:1px solid var(--brand); background:#fff; color:var(--brand); cursor:pointer; transition:.15s; white-space:nowrap; }
     .bud-edit-toggle:hover { background:var(--brand-light); }
     .bud-edit-toggle.is-editing { background:var(--brand); color:#fff; }
@@ -2157,6 +2197,10 @@
           <div class="text-muted small">Plan Income, Savings, and Spending — in that order</div>
         </div>
         <div class="d-flex align-items-center gap-2 flex-wrap">
+          <div class="bud-view-toggle">
+            <button type="button" id="bud-mode-monthly" class="active" onclick="setBudgetingViewMode('monthly')">Monthly</button>
+            <button type="button" id="bud-mode-yearly" onclick="setBudgetingViewMode('yearly')">Yearly</button>
+          </div>
           <button type="button" class="bud-toolbar-btn solid" onclick="openAddIncomeModal()"><i class="fas fa-sack-dollar"></i>Add Income</button>
           <button type="button" class="bud-toolbar-btn sky solid" onclick="openAddSavingModal()"><i class="fas fa-piggy-bank"></i>Add Saving</button>
         </div>
@@ -2178,6 +2222,7 @@
       </div>
 
       <div id="budgeting-body"></div>
+      <div id="budgeting-yearly-body" class="d-none"></div>
     </div>
 
     <!-- ======================== RECURRING TRANSACTIONS ======================== -->
@@ -4619,6 +4664,7 @@ var ADD_EXPENSE_GROUP = 'Needs';
 var BUD_MONTH = new Date().getMonth() + 1;
 var BUD_EDIT = { Needs: false, Wants: false };
 var BUD_CAT_OPEN = {}; // key: "<Group>::<Category>" -> boolean (per-category history expand)
+var BUD_VIEW_MODE = 'monthly'; // 'monthly' | 'yearly' — desktop Budgeting page only, mobile is unaffected
 var SETUP_TAB = 'account';
 var GS_HISTORY_OPEN = false;
 var GS_HISTORY_MONTH = 0; // 0 = All Months
@@ -12375,6 +12421,195 @@ function renderBudgeting() {
   document.getElementById('bud-total-allocated').textContent = rupiah(totalAllocated);
   document.getElementById('bud-allocated-pct').textContent = (totalIncomeActual > 0 ? allocatedPct + '%' : 'N/A');
   document.getElementById('bud-non-allocated').textContent = rupiah(nonAllocated);
+
+  if (BUD_VIEW_MODE === 'yearly') renderBudgetingYearly();
+}
+
+/* ---------------------------------------------------------------- */
+/*  BUDGETING — Yearly overview (desktop only)                       */
+/*  Shows Jan-Dec side by side for Income Sources, Savings List, and  */
+/*  Expenses Budget. Income/Savings are read-only realized totals     */
+/*  (same as the Monthly view — there is no "planned" concept for     */
+/*  them). Expenses cells show the Planned amount and can be clicked  */
+/*  to edit; a thin status strip compares Actual vs Planned using the  */
+/*  same threshold as the budget notification settings.               */
+/* ---------------------------------------------------------------- */
+function setBudgetingViewMode(mode) {
+  BUD_VIEW_MODE = mode;
+  var monthlyBtn = document.getElementById('bud-mode-monthly');
+  var yearlyBtn = document.getElementById('bud-mode-yearly');
+  if (monthlyBtn) monthlyBtn.classList.toggle('active', mode === 'monthly');
+  if (yearlyBtn) yearlyBtn.classList.toggle('active', mode === 'yearly');
+
+  var monthlyBody = document.getElementById('budgeting-body');
+  var yearlyBody = document.getElementById('budgeting-yearly-body');
+  if (monthlyBody) monthlyBody.classList.toggle('d-none', mode !== 'monthly');
+  if (yearlyBody) yearlyBody.classList.toggle('d-none', mode !== 'yearly');
+
+  if (mode === 'yearly') renderBudgetingYearly();
+}
+
+function renderBudgetingYearly() {
+  var wrap = document.getElementById('budgeting-yearly-body');
+  if (!wrap) return;
+
+  var html = '';
+  html += renderBudYearFlowSection('Income Sources', 'Income', STATE.data.setup.income, 'fa-sack-dollar');
+  html += renderBudYearFlowSection('Savings List', 'Savings', STATE.data.setup.savings, 'fa-piggy-bank');
+  html += renderBudYearExpenseSection();
+
+  wrap.innerHTML = html || '<div class="empty-hint">No categories yet. Add Income, Savings, Needs, or Wants categories in Settings &rarr; Setup first.</div>';
+}
+
+function budYearMonthHeaderCells() {
+  var cells = '';
+  for (var m = 1; m <= 12; m++) {
+    cells += '<th class="' + (m === BUD_MONTH ? 'cur' : '') + '">' + MONTH_NAMES[m - 1].slice(0, 3) + '</th>';
+  }
+  return cells;
+}
+
+/* Income Sources & Savings List — realized (actual) totals per month, read-only. */
+function renderBudYearFlowSection(title, group, list, icon) {
+  if (!list || !list.length) return '';
+
+  var monthTotals = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]; // index 1-12, 0 unused
+  var rowsHtml = list.map(function (item) {
+    var rowCells = '';
+    for (var m = 1; m <= 12; m++) {
+      var actual = STATE.data.transactions
+        .filter(function (t) { return Number(t.Month) === m && t.Group === group && t.Category === item.Name; })
+        .reduce(function (s, t) { return s + Number(t.Amount); }, 0);
+      monthTotals[m] += actual;
+      rowCells += '<td class="' + (m === BUD_MONTH ? 'cur' : '') + '">' + rupiah(actual) + '</td>';
+    }
+    return '<tr><td>' + escapeHtml(item.Name) + '</td>' + rowCells + '</tr>';
+  }).join('');
+
+  var totalCells = '';
+  for (var m = 1; m <= 12; m++) {
+    totalCells += '<td class="' + (m === BUD_MONTH ? 'cur' : '') + '">' + rupiah(monthTotals[m]) + '</td>';
+  }
+
+  return '' +
+    '<div class="bud-year-section">' +
+      '<div class="section-title"><i class="fas ' + icon + '"></i>' + title + '</div>' +
+      '<div class="card"><div class="card-body p-0"><div class="bud-year-wrap">' +
+        '<table class="bud-year-tbl"><thead><tr><th>Category</th>' + budYearMonthHeaderCells() + '</tr></thead>' +
+        '<tbody>' + rowsHtml + '<tr class="bud-year-total"><td>Total</td>' + totalCells + '</tr></tbody>' +
+        '</table>' +
+      '</div></div></div>' +
+    '</div>';
+}
+
+/* Expenses Budget — combines Needs + Wants into one table (Planned amount, editable).
+   A small colored dot marks each row as Needs or Wants, matching the colors already
+   used for those groups in the Monthly view. */
+function renderBudYearExpenseSection() {
+  var groups = [
+    { key: 'Needs', list: STATE.data.setup.needs, color: '#dc2626' },
+    { key: 'Wants', list: STATE.data.setup.wants, color: '#f59e0b' }
+  ];
+  var threshold = Number(NOTIF_SETTINGS_CACHE && NOTIF_SETTINGS_CACHE.budgetThresholdPct) || 80;
+
+  var monthTotals = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  var rowsHtml = '';
+
+  groups.forEach(function (g) {
+    (g.list || []).forEach(function (item) {
+      var rowCells = '';
+      for (var m = 1; m <= 12; m++) {
+        var entry = STATE.data.budget.find(function (b) {
+          return Number(b.Month) === m && b.Group === g.key && b.Category === item.Name;
+        });
+        var planned = entry ? Number(entry.PlannedAmount) : 0;
+        var actual = STATE.data.transactions
+          .filter(function (t) { return Number(t.Month) === m && t.Group === g.key && t.Category === item.Name; })
+          .reduce(function (s, t) { return s + Number(t.Amount); }, 0);
+        monthTotals[m] += planned;
+
+        var statusClass = null;
+        if (planned > 0) {
+          var pct = (actual / planned) * 100;
+          statusClass = pct >= 100 ? 'bud-status-over' : (pct >= threshold ? 'bud-status-warn' : 'bud-status-ok');
+        } else if (actual > 0) {
+          statusClass = 'bud-status-over';
+        }
+
+        rowCells += '<td class="bud-cell-editable ' + (m === BUD_MONTH ? 'cur ' : '') + (statusClass || '') + '"' +
+          ' data-group="' + g.key + '" data-category="' + escapeHtml(item.Name) + '" data-month="' + m + '"' +
+          ' data-id="' + (entry ? entry.ID : '') + '" data-planned="' + planned + '"' +
+          ' onclick="openBudYearCellEditor(this)" title="Click to edit planned amount">' +
+          rupiah(planned) +
+          '</td>';
+      }
+      rowsHtml += '<tr><td class="bud-cat-name"><span class="bud-cat-dot" style="background:' + g.color + ';"></span>' + escapeHtml(item.Name) + '</td>' + rowCells + '</tr>';
+    });
+  });
+
+  if (!rowsHtml) return '';
+
+  var totalCells = '';
+  for (var m = 1; m <= 12; m++) {
+    totalCells += '<td class="' + (m === BUD_MONTH ? 'cur' : '') + '">' + rupiah(monthTotals[m]) + '</td>';
+  }
+
+  return '' +
+    '<div class="bud-year-section">' +
+      '<div class="section-title"><i class="fas fa-bag-shopping"></i>Expenses Budget</div>' +
+      '<div class="card"><div class="card-body p-0"><div class="bud-year-wrap">' +
+        '<table class="bud-year-tbl"><thead><tr><th>Category</th>' + budYearMonthHeaderCells() + '</tr></thead>' +
+        '<tbody>' + rowsHtml + '<tr class="bud-year-total"><td>Total</td>' + totalCells + '</tr></tbody>' +
+        '</table>' +
+      '</div>' +
+      '<div class="bud-year-legend">' +
+        '<span><i style="background:#16a34a;"></i>On track</span>' +
+        '<span><i style="background:#f59e0b;"></i>Near limit</span>' +
+        '<span><i style="background:#dc2626;"></i>Over budget</span>' +
+      '</div>' +
+      '</div></div>' +
+    '</div>';
+}
+
+function openBudYearCellEditor(el) {
+  if (mGuardArchiveReadOnly()) return;
+  var group = el.dataset.group;
+  var category = el.dataset.category;
+  var month = Number(el.dataset.month);
+  var id = el.dataset.id || null;
+  var current = Number(el.dataset.planned) || 0;
+
+  Swal.fire({
+    title: 'Edit planned amount',
+    html: '<div class="text-start small text-muted mb-2">' + escapeHtml(category) + ' &mdash; ' + MONTH_NAMES[month - 1] + ' ' + STATE.year + '</div>',
+    input: 'text',
+    inputValue: current ? current.toLocaleString('id-ID') : '',
+    inputAttributes: { inputmode: 'numeric', autocapitalize: 'off' },
+    showCancelButton: true,
+    confirmButtonText: 'Save',
+    preConfirm: function (val) {
+      return Number(String(val).replace(/[^0-9]/g, '')) || 0;
+    }
+  }).then(function (r) {
+    if (!r.isConfirmed) return;
+    saveSingleBudgetCell(group, category, month, r.value, id);
+  });
+}
+
+function saveSingleBudgetCell(group, category, month, amount, id) {
+  showLoad('Saving budget...');
+  google.script.run
+    .withSuccessHandler(function (res) {
+      hideLoad();
+      if (!res.success) { Swal.fire('Error', res.message, 'error'); return; }
+      (res.records || []).forEach(function (rec) {
+        var idx = STATE.data.budget.findIndex(function (b) { return b.ID === rec.ID; });
+        if (idx > -1) STATE.data.budget[idx] = rec; else STATE.data.budget.push(rec);
+      });
+      renderBudgeting();
+    })
+    .withFailureHandler(function (err) { hideLoad(); Swal.fire('Error', err.message, 'error'); })
+    .saveBudgetBulk(STATE.year, [{ id: id, month: month, group: group, category: category, plannedAmount: amount }]);
 }
 
 /* Income & Savings — read-only realized totals; each category has its own "+" expand toggle
