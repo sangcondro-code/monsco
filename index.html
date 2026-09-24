@@ -4650,7 +4650,32 @@ var MONTH_NAMES = ['January','February','March','April','May','June','July','Aug
  * ================================================================== */
 var MONSCO_API_URL = 'https://script.google.com/macros/s/AKfycbw_5SZH1TsqEJ8LVVTsAe1LnO3xnKCpi7S-XLe__zI-aTI120HzqsvypNCoAzqlUWR2/exec';
 
-function mRpcCall_(fnName, args, handlers) {
+/* PERBAIKAN (koneksi putus-nyambung / 404 sesekali): sebelumnya setiap
+ * panggilan RPC cuma dicoba SEKALI — kalau fetch gagal karena jaringan HP
+ * lagi goyang sepersekian detik (baru bangun dari sleep, pindah wifi<->data,
+ * dsb.) ATAU Apps Script sempat membalas 404/5xx (ini SERING terjadi
+ * sesaat setelah developer redeploy Web App baru — endpoint /exec butuh
+ * waktu beberapa menit untuk "settle" di edge server Google, jadi selama
+ * jendela itu request bisa random 404 walau URL & deployment-nya benar),
+ * user langsung lihat error dan harus klik ulang manual. Sekarang:
+ * 1) Ada TIMEOUT (20 detik) via AbortController — sebelumnya kalau request
+ *    menggantung (tidak pernah resolve, tidak pernah reject), UI juga akan
+ *    menggantung/stuck loading tanpa batas, tanpa pernah masuk ke pesan
+ *    error sama sekali.
+ * 2) Kegagalan di LEVEL TRANSPORT (network error, timeout, atau balasan
+ *    HTTP 404/5xx dari Apps Script) di-retry OTOMATIS SATU KALI setelah
+ *    jeda singkat, SEBELUM benar-benar dilaporkan sebagai gagal ke UI.
+ *    Kegagalan BISNIS (server menjawab normal tapi fungsinya sendiri error,
+ *    lihat data.error) TIDAK di-retry — itu bukan masalah koneksi.
+ * 3) Objek err yang dikirim ke failure handler sekarang bawa err.httpStatus
+ *    (kalau soal HTTP status) supaya UI bisa membedakan "server tidak bisa
+ *    dihubungi sama sekali" vs "server membalas tapi endpoint-nya 404".
+ */
+function mRpcCall_(fnName, args, handlers, isRetry) {
+  var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+  var timedOut = false;
+  var timer = ctrl ? setTimeout(function () { timedOut = true; ctrl.abort(); }, 20000) : null;
+
   fetch(MONSCO_API_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -4659,13 +4684,21 @@ function mRpcCall_(fnName, args, handlers) {
       args: args,
       username: STATE.username || null,
       sessionToken: STATE.sessionToken || null
-    })
+    }),
+    signal: ctrl ? ctrl.signal : undefined
   })
     .then(function (r) {
-      if (!r.ok) throw new Error('HTTP ' + r.status);
+      if (timer) clearTimeout(timer);
+      if (!r.ok) {
+        var httpErr = new Error('HTTP ' + r.status);
+        httpErr.httpStatus = r.status;
+        throw httpErr;
+      }
       return r.json();
     })
     .then(function (data) {
+      // Sampai di sini artinya server BENAR-BENAR menjawab normal (bukan
+      // soal transport) — kegagalan dari titik ini bukan kandidat retry.
       if (data && data.error) {
         if (handlers.failure) handlers.failure({ message: data.error });
         else console.error('RPC error (' + fnName + '):', data.error);
@@ -4674,6 +4707,15 @@ function mRpcCall_(fnName, args, handlers) {
       if (handlers.success) handlers.success(data ? data.result : undefined);
     })
     .catch(function (err) {
+      if (timer) clearTimeout(timer);
+      if (timedOut) { err = new Error('Request timed out'); err.isTimeout = true; }
+      var isTransportIssue = !!(err && (err.isTimeout || err.httpStatus || err.name === 'TypeError' || err.name === 'AbortError'));
+      if (isTransportIssue && !isRetry) {
+        setTimeout(function () { mRpcCall_(fnName, args, handlers, true); }, 1200);
+        return;
+      }
+      err = err || new Error('Unknown error');
+      err.isNetworkError = isTransportIssue;
       if (handlers.failure) handlers.failure(err);
       else console.error('RPC network error (' + fnName + '):', err);
     });
@@ -4916,6 +4958,24 @@ function sumSavingsActualExcludingRollover_(txList) {
     .reduce(function (s, t) { return s + Number(t.Amount); }, 0);
 }
 
+/* Pesan error koneksi yang lebih spesifik ke user, dibuat dari err yang
+ * dilempar mRpcCall_ (lihat komentar "PERBAIKAN (koneksi putus-nyambung /
+ * 404 sesekali)" di dekat definisi MONSCO_API_URL). Titik ini baru
+ * tercapai SETELAH shim sudah retry otomatis 1x — jadi kalau masih
+ * gagal di sini, memang bukan cuma hiccup sesaat. */
+function mConnectionErrorMessage_(err) {
+  if (err && err.httpStatus === 404) {
+    return 'Server sedang tidak bisa dijangkau (404). Kemungkinan backend baru saja di-redeploy dan belum "settle" — tunggu 1-2 menit lalu coba lagi. Kalau masih 404 terus, cek URL deployment Apps Script.';
+  }
+  if (err && err.httpStatus) {
+    return 'Server membalas error (HTTP ' + err.httpStatus + '). Coba lagi sebentar.';
+  }
+  if (err && err.isTimeout) {
+    return 'Server tidak merespons (timeout). Cek koneksi internet kamu, lalu coba lagi.';
+  }
+  return 'Could not connect to server. Please try again.';
+}
+
 /* ---------------------------------------------------------------- */
 /*  LOGIN / AUTH                                                      */
 /* ---------------------------------------------------------------- */
@@ -4941,7 +5001,7 @@ function handleLogin(e) {
     })
     .withFailureHandler(function (err) {
       btn.disabled = false; btn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>LOGIN';
-      showLoginError('Could not connect to server. Please try again.');
+      showLoginError(mConnectionErrorMessage_(err));
       console.error(err);
     })
     .loginUser(u, p);
@@ -18014,7 +18074,7 @@ function mBiometricLogin() {
         })
         .withFailureHandler(function (err) {
           hideLoad();
-          mToast('Could not connect to server. Please try again.', 'error');
+          mToast(mConnectionErrorMessage_(err), 'error');
           console.error(err);
         })
         .loginUserBySession(account.username, account.record.sessionToken);
