@@ -13,8 +13,9 @@
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-title" content="Monsco">
 <meta name="theme-color" content="#005CAA">
-<!-- Opsional: hapus tanda komentar agar dibuka dari Home Screen tanpa address bar Safari -->
-<!-- <meta name="apple-mobile-web-app-capable" content="yes"> -->
+<!-- Dibuka dari Home Screen seperti app sungguhan (tanpa address bar Safari) -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 
 <link rel="preconnect" href="https://script.google.com" crossorigin>
 
@@ -60,6 +61,28 @@
   }, 15000);
   frame.addEventListener('load', function () { clearTimeout(slow); splash.classList.add('hide'); });
   frame.src = GAS_URL;
+
+  /* ===== Penitipan sesi login (jembatan dari app GAS di dalam iframe) =====
+     Sesi disimpan di sini (first-party, lebih awet di iPhone) dan hangus kalau
+     SESSION_TTL_MS tidak dipakai. Hanya menerima pesan dari googleusercontent.com / google.com. */
+  var SESSION_KEY = 'monsco_bridge_v1';
+  var SESSION_TTL_MS = 3 * 24 * 60 * 60 * 1000; // 3 hari
+  var ORIGIN_OK = /^https:\/\/([a-z0-9-]+\.)*(googleusercontent\.com|google\.com)$/;
+  function bLoad() { try { return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch (e) { return null; } }
+  function bSave(o) { try { if (o) localStorage.setItem(SESSION_KEY, JSON.stringify(o)); else localStorage.removeItem(SESSION_KEY); } catch (e) {} }
+  window.addEventListener('message', function (e) {
+    var d = e.data;
+    if (!d || d.monsco !== 1 || !ORIGIN_OK.test(e.origin)) return;
+    var now = Date.now(), cur = bLoad();
+    if (d.type === 'save' && typeof d.payload === 'string') bSave({ payload: d.payload, last: now });
+    else if (d.type === 'touch') { if (cur) { cur.last = now; bSave(cur); } }
+    else if (d.type === 'clear') bSave(null);
+    else if (d.type === 'get') {
+      var ok = cur && (now - cur.last) < SESSION_TTL_MS;
+      if (cur && !ok) bSave(null);
+      try { e.source.postMessage({ monsco: 1, type: 'session', payload: ok ? cur.payload : null }, e.origin); } catch (err) {}
+    }
+  });
 
   // Bersihkan Service Worker lama (sw.js) di perangkat yang pernah membuka versi sebelumnya
   try {
