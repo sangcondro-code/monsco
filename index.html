@@ -13,9 +13,8 @@
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-title" content="Monsco">
 <meta name="theme-color" content="#005CAA">
-<!-- Dibuka dari Home Screen seperti app sungguhan (tanpa address bar Safari) -->
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<!-- Opsional: hapus tanda komentar agar dibuka dari Home Screen tanpa address bar Safari -->
+<!-- <meta name="apple-mobile-web-app-capable" content="yes"> -->
 
 <link rel="preconnect" href="https://script.google.com" crossorigin>
 
@@ -61,46 +60,6 @@
   }, 15000);
   frame.addEventListener('load', function () { clearTimeout(slow); splash.classList.add('hide'); });
   frame.src = GAS_URL;
-
-  /* ===== Penitipan sesi login (jembatan dari app GAS di dalam iframe) =====
-     Sesi disimpan di sini (first-party, lebih awet di iPhone) dan hangus kalau
-     SESSION_TTL_MS tidak dipakai. Hanya menerima pesan dari googleusercontent.com / google.com. */
-  var SESSION_KEY = 'monsco_bridge_v1';
-  var SESSION_TTL_MS = 3 * 24 * 60 * 60 * 1000; // 3 hari
-  var ORIGIN_OK = /^https:\/\/([a-z0-9-]+\.)*(googleusercontent\.com|google\.com)$/;
-  function bLoad() { try { return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch (e) { return null; } }
-  function bSave(o) { try { if (o) localStorage.setItem(SESSION_KEY, JSON.stringify(o)); else localStorage.removeItem(SESSION_KEY); } catch (e) {} }
-  // Diagnosa: buka halaman ini dengan tambahan ?debug di alamatnya untuk melihat log pesan.
-  var DEBUG = /[?&]debug\b/.test(location.search), dbg = null, dbgLines = [];
-  function blog(t) {
-    if (!DEBUG) return;
-    if (!dbg) {
-      dbg = document.createElement('div');
-      dbg.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:99;background:rgba(0,0,0,.8);color:#7CFC00;font:11px/1.4 monospace;padding:6px 8px;pointer-events:none;white-space:pre-wrap;word-break:break-all';
-      document.body.appendChild(dbg);
-    }
-    dbgLines.push(new Date().toLocaleTimeString() + ' ' + t);
-    if (dbgLines.length > 8) dbgLines.shift();
-    dbg.textContent = dbgLines.join('\n');
-  }
-  (function () { var c = bLoad(); blog('page: ' + location.origin + ' | stored session: ' + (c ? 'yes, ' + Math.round((Date.now() - c.last) / 60000) + ' min ago' : 'no')); })();
-
-  window.addEventListener('message', function (e) {
-    var d = e.data;
-    if (!d || d.monsco !== 1) return;
-    if (!ORIGIN_OK.test(e.origin)) { blog('REJECTED origin ' + e.origin); return; }
-    blog('recv ' + d.type);
-    var now = Date.now(), cur = bLoad();
-    if (d.type === 'save' && typeof d.payload === 'string') bSave({ payload: d.payload, last: now });
-    else if (d.type === 'touch') { if (cur) { cur.last = now; bSave(cur); } }
-    else if (d.type === 'clear') bSave(null);
-    else if (d.type === 'get') {
-      var ok = cur && (now - cur.last) < SESSION_TTL_MS;
-      if (cur && !ok) bSave(null);
-      blog('reply session: ' + (ok ? 'yes' : 'no'));
-      try { e.source.postMessage({ monsco: 1, type: 'session', payload: ok ? cur.payload : null }, e.origin); } catch (err) {}
-    }
-  });
 
   // Bersihkan Service Worker lama (sw.js) di perangkat yang pernah membuka versi sebelumnya
   try {
