@@ -24,16 +24,14 @@
   #app { position:fixed; inset:0; width:100%; height:100%; border:0; background:#fff; }
 
   #splash { position:fixed; inset:0; z-index:10; background:#fff; display:flex; flex-direction:column;
-    align-items:center; justify-content:center; gap:18px; transition:opacity .3s; }
+    align-items:center; justify-content:center; gap:0; transition:opacity .3s; }
   #splash.hide { opacity:0; pointer-events:none; }
-  #splash img { width:min(46vw,200px); height:auto; border-radius:20px; animation:pulse 1.4s ease-in-out infinite; }
-  .spin { width:30px; height:30px; border:3px solid #dbe7f3; border-top-color:#005CAA; border-radius:50%; animation:rot .8s linear infinite; }
-  #slow { display:none; text-align:center; font-size:.85rem; color:#4b5563; line-height:1.5; padding:0 28px; }
+  #splash img { display:block; width:60px; height:60px; border-radius:16px; object-fit:cover; animation:pulse 1.4s ease-in-out infinite; }
+  #slow { display:none; margin-top:22px; text-align:center; font-size:.85rem; color:#4b5563; line-height:1.5; padding:0 28px; }
   .btn { display:inline-block; margin:8px 6px 0; padding:9px 16px; border-radius:10px; border:1px solid #005CAA;
     background:#fff; color:#005CAA; font-weight:600; font-size:.85rem; font-family:inherit; text-decoration:none; cursor:pointer; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.6} }
-  @keyframes rot { to { transform:rotate(360deg) } }
-  @media (prefers-reduced-motion:reduce){ #splash img, .spin { animation:none } }
+  @keyframes pulse { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(.9);opacity:.72} }
+  @media (prefers-reduced-motion:reduce){ #splash img { animation:none } }
 </style>
 </head>
 <body>
@@ -42,7 +40,6 @@
 
 <div id="splash">
   <img src="loading_monsco.jpg" alt="Monsco">
-  <div class="spin" id="spin"></div>
   <div id="slow">
     Loading is taking longer than usual.<br>
     <button class="btn" onclick="location.reload()">Reload</button>
@@ -60,7 +57,6 @@
 
   var slow = setTimeout(function () {
     document.getElementById('slow').style.display = 'block';
-    document.getElementById('spin').style.display = 'none';
   }, 15000);
   frame.addEventListener('load', function () { clearTimeout(slow); splash.classList.add('hide'); });
   frame.src = GAS_URL;
